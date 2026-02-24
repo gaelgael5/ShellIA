@@ -1,6 +1,8 @@
 # ============================================================
 # ShellIA - AppVeyor CI/CD Configuration
 # ============================================================
+# DOCKER_USER et DOCKER_PASS configurés dans Settings > Environment
+# ============================================================
 version: 1.0.{build}
 
 image:
@@ -10,10 +12,6 @@ configuration: Release
 platform: Any CPU
 
 environment:
-  DOCKER_USER:
-    secure: cFiYnLsRXfGJQUACN3B9ag==
-  DOCKER_PASS:
-    secure: 7p0MUOkaQMGwpEolyRITrcObvCNd6qjbvd5us2QScHKEqZmcHzFPGkd5Muq3UVvG
   matrix:
     - ARCH: amd64
 
