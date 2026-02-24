@@ -158,17 +158,8 @@ class UserSession:
             else:
                 self.ai_provider = ChatGPTProvider(api_key=api_key)
         else:
-            ai_provider_type = env_data.get("AI_PROVIDER", "chatgpt").lower()
-
-            if ai_provider_type == "claude":
-                api_key = env_data.get("ANTHROPIC_API_KEY", "")
-                model = env_data.get("CLAUDE_MODEL", "claude-sonnet-4-20250514")
-                if api_key:
-                    self.ai_provider = ClaudeProvider(api_key=api_key, model=model)
-            elif ai_provider_type == "chatgpt":
-                api_key = env_data.get("OPENAI_API_KEY", "")
-                if api_key:
-                    self.ai_provider = ChatGPTProvider(api_key=api_key)
+            # No AI_API_ID configured — AI provider must be set up via the web interface (Settings → APIs)
+            self.ai_provider = None
 
         return env_data
 
