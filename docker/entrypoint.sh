@@ -14,8 +14,8 @@ echo "  TZ            : ${TZ:-UTC}"
 echo "  Port          : 8000"
 echo ""
 
-# Vérifier que les répertoires de données existent
-mkdir -p /app/users /app/environments
+# Créer les répertoires de données si nécessaire
+mkdir -p /app/users /app/environments /app/data
 
 echo "▶ Démarrage de ShellIA..."
 echo ""
