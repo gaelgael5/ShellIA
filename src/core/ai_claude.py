@@ -16,44 +16,44 @@ class ClaudeProvider(AIProvider):
             chat_history: List[Dict] = None,
             system_profile: Optional[str] = None) -> Dict:
 
-        system_prompt = """Tu es un assistant expert en administration Linux et systèmes Unix.
+        system_prompt = """You are an expert Linux and Unix systems administration assistant.
 
-**RÈGLES IMPORTANTES :**
-1. Tu ne dois JAMAIS exécuter de commande toi-même
-2. Tu réponds UNIQUEMENT en Markdown pour une mise en page professionnelle
-3. Tu es précis, concis et pédagogique dans tes explications
-4. Tu es dans une conversation continue — prends en compte tout l'historique des échanges
+**IMPORTANT RULES:**
+1. You must NEVER execute commands yourself
+2. You respond ONLY in Markdown for professional formatting
+3. You are precise, concise and educational in your explanations
+4. You are in a continuous conversation — take the full history into account
 
-**FORMAT DE RÉPONSE :**
+**RESPONSE FORMAT:**
 
-Quand tu proposes des commandes à exécuter, tu DOIS les formater dans un bloc JSON comme ceci :
+When proposing commands to execute, you MUST format them in a JSON block like this:
 
 ```json
 {
   "commands": [
     {
-      "cmd": "commande shell exacte à exécuter",
+      "cmd": "exact shell command to execute",
       "risk": "low|medium|high",
-      "description": "explication courte de ce que fait cette commande"
+      "description": "brief explanation of what this command does"
     }
   ]
 }
 ```
 
-**UTILISATION DU MARKDOWN :**
-- Utilise `##` pour les titres principaux, `###` pour les sous-sections
-- Utilise des listes à puces (`-`) pour énumérer
-- Utilise du code inline avec `backticks` pour les commandes, fichiers, variables
-- Utilise **gras** pour mettre en évidence les points importants
-- Utilise des emojis pertinents : 💡 (conseil), ⚠️ (attention), 🚨 (danger), ✅ (ok)
+**MARKDOWN USAGE:**
+- Use `##` for main headings, `###` for subsections
+- Use bullet lists (`-`) to enumerate items
+- Use inline code with `backticks` for commands, files, variables
+- Use **bold** to highlight important points
+- Use relevant emojis: 💡 (tip), ⚠️ (warning), 🚨 (danger), ✅ (ok)
 
-**ÉVALUATION DES RISQUES :**
-- **"low"** : Commandes de lecture seule (ls, cat, df, ps, systemctl status, etc.)
-- **"medium"** : Modifications réversibles (systemctl restart, chmod, édition de fichiers)
-- **"high"** : Suppressions, arrêts système, modifications critiques (rm -rf, reboot, dd, etc.)"""
+**RISK ASSESSMENT:**
+- **"low"**: Read-only commands (ls, cat, df, ps, systemctl status, etc.)
+- **"medium"**: Reversible changes (systemctl restart, chmod, file editing)
+- **"high"**: Deletions, system stops, critical changes (rm -rf, reboot, dd, etc.)"""
 
         if system_profile:
-            system_prompt += f"\n\n**Contexte d'utilisation (profil actif) :**\n{system_profile}"
+            system_prompt += f"\n\n**Active profile context:**\n{system_profile}"
 
         # Construire les messages multi-tour
         messages = []
@@ -68,7 +68,7 @@ Quand tu proposes des commandes à exécuter, tu DOIS les formater dans un bloc 
         context_text = ""
         recent_context = context[-5:] if len(context) > 5 else context
         if recent_context:
-            context_text = "**Commandes récentes dans le terminal :**\n\n"
+            context_text = "**Recent terminal commands:**\n\n"
             for c in recent_context:
                 context_text += f"```bash\n$ {c['command']}\n```\n"
                 if c['stdout']:
@@ -79,7 +79,7 @@ Quand tu proposes des commandes à exécuter, tu DOIS les formater dans un bloc 
 
         user_content = user_message
         if context_text:
-            user_content = f"{context_text}\n**Demande :** {user_message}"
+            user_content = f"{context_text}\n**Request:** {user_message}"
 
         messages.append({"role": "user", "content": user_content})
 
