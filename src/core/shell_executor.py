@@ -65,11 +65,17 @@ class ShellExecutor:
             if not self.ssh_executor.connect():
                 raise ConnectionError(f"Impossible de se connecter à {ssh_host}")
         elif self.mode == "wsl":
-            if wsl_distribution:
-                logger.info(f"🐧 Mode WSL activé: {wsl_distribution}")
+            # WSL requires Windows — not available on Linux/Docker
+            if sys.platform != "win32":
+                logger.warning("⚠️  WSL mode requested but not running on Windows — falling back to local mode")
+                self.mode = "local"
+                self._start_persistent_local_session()
             else:
-                logger.info("🐧 Mode WSL activé (distribution par défaut)")
-            self._start_persistent_wsl_session()
+                if wsl_distribution:
+                    logger.info(f"🐧 WSL mode: {wsl_distribution}")
+                else:
+                    logger.info("🐧 WSL mode (default distribution)")
+                self._start_persistent_wsl_session()
         else:
             logger.info("💻 Mode local activé")
             self._start_persistent_local_session()
