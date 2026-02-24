@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     ca-certificates \
     tzdata \
+    gosu \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -55,7 +56,9 @@ RUN mkdir -p /app/users /app/environments /app/data
 RUN groupadd -r shellia && useradd -r -g shellia -s /bin/bash shellia \
     && chown -R shellia:shellia /app
 
-USER shellia
+# Note: We do NOT switch to USER shellia here because
+# the entrypoint needs to run as root to fix volume permissions,
+# then drops to shellia via gosu.
 
 # ── Port exposé ──────────────────────────────────────────────
 EXPOSE 8000
