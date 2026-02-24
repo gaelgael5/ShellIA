@@ -20,7 +20,7 @@ from core.api_manager import APIManager
 from core.profile_manager import ProfileManager
 from core.auth import user_manager, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
 
-# Charger les variables d'environnement depuis le dossier environments/
+# Load environment variables from the environments/ folder
 try:
     from dotenv import load_dotenv
 
@@ -32,23 +32,23 @@ try:
         load_dotenv(env_file)
         env_display_name = os.getenv("ENV_NAME", env_name)
         env_description = os.getenv("ENV_DESCRIPTION", "")
-        print(f"📝 Environnement chargé: {env_display_name}")
+        print(f"📝 Environment loaded: {env_display_name}")
         if env_description:
             print(f"   {env_description}")
     else:
         fallback_env = Path(__file__).parent.parent / ".env"
         if fallback_env.exists():
             load_dotenv(fallback_env)
-            print(f"📝 Fichier .env chargé (fallback)")
+            print(f"📝 .env file loaded (fallback)")
         else:
-            print(f"⚠️  Aucun fichier d'environnement trouvé")
-            print(f"   Fichier attendu: {env_file}")
-            print(f"   Utilisez: set SHELLIA_ENV=local ou set SHELLIA_ENV=remote")
+            print(f"⚠️  No environment file found")
+            print(f"   Expected file: {env_file}")
+            print(f"   Use: export SHELLIA_ENV=local or export SHELLIA_ENV=remote")
 except ImportError:
-    print("⚠️  python-dotenv non installé, utilisation des variables d'environnement système")
-    print("   Installez avec: pip install python-dotenv")
+    print("⚠️  python-dotenv not installed — using system environment variables")
+    print("   Install with: pip install python-dotenv")
 
-# Importer les providers OAuth APRÈS load_dotenv pour que les variables soient disponibles
+# Import OAuth providers AFTER load_dotenv so variables are available
 from core.google_auth import google_auth_provider
 from core.microsoft_auth import microsoft_auth_provider
 from core.facebook_auth import facebook_auth_provider
@@ -59,13 +59,13 @@ from core.facebook_auth import facebook_auth_provider
 
 app = FastAPI()
 
-# Chemins de base
+# Base paths
 PROJECT_ROOT = Path(__file__).parent.parent
 USERS_DIR = PROJECT_ROOT / "users"
 GLOBAL_ENVIRONMENTS_DIR = PROJECT_ROOT / "environments"
 GLOBAL_APIS_FILE = PROJECT_ROOT / "apis.json"
 
-# Handler pour les erreurs de validation
+# Validation error handler
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     body = await request.body()
