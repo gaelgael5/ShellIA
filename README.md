@@ -126,6 +126,22 @@ Open http://localhost:8000 🎉
 | `SHELLIA_PORT` | ❌ | `8000` | Exposed port (docker compose only) |
 
 > 💡 API keys can also be configured directly in the web interface (Settings → APIs).
+### 🔑 About SECRET_KEY
+
+`SECRET_KEY` is used to **sign and verify JWT tokens** for user authentication.
+
+- When you log in, ShellIA generates a JWT token signed with this key
+- On every subsequent request, it verifies the token has not been tampered with
+- Without the correct `SECRET_KEY`, no one can forge a valid authentication token
+
+**Generate a strong key:**
+```bash
+openssl rand -hex 32
+```
+
+> ⚠️ **Keep it secret.** Never commit it to your repository — use `.env` or Docker secrets instead.
+
+
 
 ---
 
