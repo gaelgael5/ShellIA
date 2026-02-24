@@ -116,7 +116,7 @@ Open http://localhost:8000 🎉
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `SECRET_KEY` | ✅ | — | JWT secret key (use a strong random value) |
+| `SECRET_KEY` | ✅ | — | JWT secret key (use a strong random value) Ucan use "openssl rand -hex 32" |
 | `AI_PROVIDER` | ❌ | `claude` | AI provider: `claude` or `chatgpt` |
 | `ANTHROPIC_API_KEY` | ❌ | — | Claude API key |
 | `OPENAI_API_KEY` | ❌ | — | OpenAI API key |
