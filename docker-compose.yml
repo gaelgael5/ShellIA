@@ -44,6 +44,37 @@ services:
         reservations:
           memory: 128M
 
+  # ============================================================
+  # Watchtower — Auto-update ShellIA when a new image is pushed
+  # ============================================================
+  # Enable with:  docker compose --profile watchtower up -d
+  # Disable with: docker compose --profile watchtower down
+  # ============================================================
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: shellia_watchtower
+    restart: unless-stopped
+    profiles: ["watchtower"]
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    environment:
+      # Pull and restart shellia only (not all containers)
+      - WATCHTOWER_SCOPE=shellia
+      # Clean up old images after update
+      - WATCHTOWER_CLEANUP=true
+      # Check for new image every hour (3600 seconds)
+      - WATCHTOWER_POLL_INTERVAL=3600
+      # Send a notification in the logs when an update is applied
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+
+    # Watch only the shellia container
+    command: shellia
+
+    networks:
+      - shellia_net
+
 volumes:
   shellia_data:
     name: shellia_data

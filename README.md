@@ -101,6 +101,72 @@ Open http://localhost:8000 🎉
 
 ---
 
+## 🖥️ Deploy on Proxmox LXC
+
+ShellIA runs well inside a **Proxmox LXC container** (Ubuntu 22.04 recommended).
+
+### Prerequisites
+
+```bash
+# Inside your LXC container — install Docker
+apt update && apt install -y ca-certificates curl gnupg
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  | tee /etc/apt/sources.list.d/docker.list > /dev/null
+apt update && apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+```
+
+> ⚠️ In the Proxmox LXC config, set **nesting = 1** and **keyctl = 1** to allow Docker to run.
+
+### Start ShellIA
+
+```bash
+mkdir -p /opt/shellia && cd /opt/shellia
+curl -O https://raw.githubusercontent.com/gaelgael5/ShellIA/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/gaelgael5/ShellIA/main/.env.docker
+cp .env.docker .env
+
+# Edit .env and set a strong SECRET_KEY
+# openssl rand -hex 32
+
+docker compose up -d
+```
+
+---
+
+## 🔄 Auto-update with Watchtower
+
+[Watchtower](https://containrrr.dev/watchtower/) automatically pulls the latest `blackbeardteam/shellia:latest` image and restarts the container when a new version is published on Docker Hub.
+
+### Enable Watchtower
+
+```bash
+# Start ShellIA + Watchtower
+docker compose --profile watchtower up -d
+
+# Watchtower checks for updates every hour
+# Logs show when an update is applied:
+docker logs shellia_watchtower
+```
+
+### Disable Watchtower
+
+```bash
+docker compose --profile watchtower down watchtower
+# ShellIA keeps running
+```
+
+### Manual update (without Watchtower)
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+---
+
 ## ⚙️ Environment Variables
 
 | Variable | Required | Default | Description |
