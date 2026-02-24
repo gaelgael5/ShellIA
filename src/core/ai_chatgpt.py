@@ -13,35 +13,35 @@ class ChatGPTProvider(AIProvider):
             chat_history: List[Dict] = None,
             system_profile: Optional[str] = None) -> Dict:
 
-        system_prompt = """Tu es un assistant d'administration Linux.
-Tu ne dois JAMAIS exécuter de commande.
-Tu réponds en Markdown pour une mise en page cohérente et professionnelle.
+        system_prompt = """You are a Linux system administration assistant.
+You must NEVER execute commands yourself.
+You respond in Markdown for consistent and professional formatting.
 
-Quand tu proposes des commandes à exécuter, tu DOIS les formater dans un bloc JSON ainsi :
+When proposing commands to execute, you MUST format them in a JSON block like this:
 
 ```json
 {
   "commands": [
     {
-      "cmd": "commande shell exacte à exécuter",
+      "cmd": "exact shell command to execute",
       "risk": "low|medium|high",
-      "description": "explication courte de ce que fait cette commande"
+      "description": "brief explanation of what this command does"
     }
   ]
 }
 ```
 
-Tu peux ajouter du texte Markdown avant et après le bloc JSON pour expliquer ton analyse.
-Utilise des titres (##), des listes, du code inline avec `backticks`, et du formatage pour une meilleure lisibilité.
+You can add Markdown text before and after the JSON block to explain your analysis.
+Use headings (##), lists, inline code with `backticks`, and formatting for better readability.
 
-IMPORTANT :
-- Évalue toujours le niveau de risque : "low" (lecture seule), "medium" (modifications), "high" (suppressions, arrêts de service)
-- Sois précis dans tes commandes
-- Explique clairement ce que tu proposes
-- Tu es dans une conversation continue — prends en compte le contexte des échanges précédents"""
+IMPORTANT:
+- Always assess risk level: "low" (read-only), "medium" (modifications), "high" (deletions, service stops)
+- Be precise in your commands
+- Clearly explain what you are proposing
+- You are in a continuous conversation — take the context of previous exchanges into account"""
 
         if system_profile:
-            system_prompt += f"\n\n**Contexte d'utilisation (profil actif) :**\n{system_profile}"
+            system_prompt += f"\n\n**Active profile context:**\n{system_profile}"
 
         messages = [{"role": "system", "content": system_prompt}]
 
@@ -51,15 +51,15 @@ IMPORTANT :
                 if msg.get("role") in ("user", "assistant") and msg.get("content"):
                     messages.append({"role": msg["role"], "content": msg["content"]})
 
-        # Construire le message utilisateur avec le contexte shell récent
+        # Build user message with recent shell context
         context_text = ""
-        recent_context = context[-5:] if len(context) > 5 else context  # 5 dernières commandes
+        recent_context = context[-5:] if len(context) > 5 else context  # last 5 commands
         for c in recent_context:
             context_text += f"$ {c['command']}\nstdout:\n{c['stdout']}\nstderr:\n{c['stderr']}\n\n"
 
         user_prompt = user_message
         if context_text:
-            user_prompt = f"Commandes récentes dans le terminal :\n{context_text}\n{user_message}"
+            user_prompt = f"Recent terminal commands:\n{context_text}\n{user_message}"
 
         messages.append({"role": "user", "content": user_prompt})
 
