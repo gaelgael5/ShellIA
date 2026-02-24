@@ -11,9 +11,18 @@ from jose import JWTError, jwt
 import bcrypt
 
 # Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "votre-cle-secrete-a-changer-en-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    import secrets
+    SECRET_KEY = secrets.token_hex(32)
+    import logging
+    logging.getLogger(__name__).warning(
+        "⚠️  SECRET_KEY not set — using a random key (sessions will not persist across restarts). "
+        "Set the SECRET_KEY environment variable for production."
+    )
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 480
 
 # Chemin de la base de données
 DB_PATH = Path(__file__).parent.parent.parent / "data" / "users.db"
