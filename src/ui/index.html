@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>AI Shell Copilot</title>
 <!-- Bibliothèque Markdown -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -897,6 +898,145 @@ button:disabled {
 .cmd-copy-btn:hover {
   background: #505050;
 }
+
+/* ============================================================
+   RESPONSIVE MOBILE
+   ============================================================ */
+
+/* Barre de navigation mobile (cachée sur desktop) */
+#mobile-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body {
+    flex-direction: column;
+    height: 100dvh; /* dynamic viewport height pour mobile */
+    overflow: hidden;
+  }
+
+  /* Cacher le diviseur vertical */
+  #resizer {
+    display: none;
+  }
+
+  /* Panneau IA — plein écran sur mobile */
+  #ai {
+    width: 100% !important;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Panneau Terminal — plein écran sur mobile */
+  #term {
+    width: 100% !important;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Panneau caché sur mobile */
+  .panel-hidden {
+    display: none !important;
+  }
+
+  /* Zone de saisie IA plus compacte */
+  #chatInput {
+    padding: 10px 12px;
+  }
+
+  #chatInput textarea {
+    min-height: 44px;
+    font-size: 16px; /* évite le zoom auto iOS sur focus */
+  }
+
+  /* Sidebar config : plein écran sur mobile */
+  .env-sidebar {
+    width: 100%;
+    right: -100%;
+  }
+
+  /* Barre de navigation mobile */
+  #mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    background: #1e1e1e;
+    border-top: 2px solid #404040;
+    z-index: 500;
+    flex-shrink: 0;
+  }
+
+  .mobile-nav-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #858585;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    transition: color 0.2s, background 0.2s;
+    padding: 0;
+    margin: 0;
+    transform: none !important;
+  }
+
+  .mobile-nav-btn:hover {
+    background: #2a2a2a;
+    transform: none !important;
+  }
+
+  .mobile-nav-btn.active {
+    color: #007acc;
+    border-top: 2px solid #007acc;
+    margin-top: -2px;
+  }
+
+  .mobile-nav-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* Réserver de la place pour la barre de navigation */
+  #ai,
+  #term {
+    padding-bottom: 52px;
+  }
+
+  /* Header plus compact */
+  .header {
+    padding: 8px 12px;
+  }
+
+  /* Titres plus petits */
+  #ai h3, #term h3, .header h3 {
+    font-size: 15px;
+  }
+
+  /* Boutons de commande full-width */
+  .cmd-actions {
+    flex-direction: column;
+  }
+
+  .cmd-copy-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Modales : full-width sur mobile */
+  .modal-box {
+    min-width: unset;
+    width: calc(100vw - 32px);
+    margin: 16px;
+  }
+}
 </style>
 </head>
 <body>
@@ -988,6 +1128,18 @@ button:disabled {
   </div>
 </div>
 
+<!-- Barre de navigation mobile (cachée sur desktop) -->
+<nav id="mobile-nav">
+  <button class="mobile-nav-btn active" id="mobile-btn-ai" onclick="switchMobilePanel('ai')">
+    <span class="mobile-nav-icon">🤖</span>
+    <span>IA</span>
+  </button>
+  <button class="mobile-nav-btn" id="mobile-btn-term" onclick="switchMobilePanel('term')">
+    <span class="mobile-nav-icon">💻</span>
+    <span>Terminal</span>
+  </button>
+</nav>
+
 <script>
 // ============================================================================
 // AUTHENTIFICATION
@@ -1039,6 +1191,74 @@ async function authFetch(url, options = {}) {
   }
   return res;
 }
+
+// ============================================================================
+// NAVIGATION MOBILE
+// ============================================================================
+
+function switchMobilePanel(panel) {
+  const isMobile = window.innerWidth <= 768;
+  if (!isMobile) return;
+
+  const aiPanel = document.getElementById('ai');
+  const termPanel = document.getElementById('term');
+  const btnAi = document.getElementById('mobile-btn-ai');
+  const btnTerm = document.getElementById('mobile-btn-term');
+
+  if (panel === 'ai') {
+    aiPanel.classList.remove('panel-hidden');
+    termPanel.classList.add('panel-hidden');
+    btnAi.classList.add('active');
+    btnTerm.classList.remove('active');
+  } else {
+    termPanel.classList.remove('panel-hidden');
+    aiPanel.classList.add('panel-hidden');
+    btnTerm.classList.add('active');
+    btnAi.classList.remove('active');
+    // Resize le terminal actif après affichage
+    requestAnimationFrame(() => {
+      if (activeTabId && tabs[activeTabId]) {
+        tabs[activeTabId].fitAddon.fit();
+      }
+    });
+  }
+}
+
+// Au chargement, initialiser le bon panneau selon la taille écran
+window.addEventListener('DOMContentLoaded', function () {
+  if (window.innerWidth <= 768) {
+    // Mobile : cacher le terminal par défaut, montrer l'IA
+    document.getElementById('term').classList.add('panel-hidden');
+  }
+});
+
+// Gérer le resize (rotation écran, etc.)
+window.addEventListener('resize', function () {
+  const isMobile = window.innerWidth <= 768;
+  const aiPanel = document.getElementById('ai');
+  const termPanel = document.getElementById('term');
+
+  if (!isMobile) {
+    // Repasser en desktop : tout afficher
+    aiPanel.classList.remove('panel-hidden');
+    termPanel.classList.remove('panel-hidden');
+  } else {
+    // Repasser en mobile : vérifier quel panneau est actif
+    const aiHidden = aiPanel.classList.contains('panel-hidden');
+    const termHidden = termPanel.classList.contains('panel-hidden');
+    if (!aiHidden && !termHidden) {
+      // Aucun n'est caché (venait de desktop) : cacher le terminal
+      termPanel.classList.add('panel-hidden');
+      document.getElementById('mobile-btn-ai').classList.add('active');
+      document.getElementById('mobile-btn-term').classList.remove('active');
+    }
+  }
+
+  // Resize le terminal actif
+  if (activeTabId && tabs[activeTabId]) {
+    requestAnimationFrame(() => { tabs[activeTabId].fitAddon.fit(); });
+  }
+});
 
 // ============================================================================
 // SYSTÈME D'ONGLETS POUR TERMINAUX MULTIPLES

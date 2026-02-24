@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ShellIA - Connexion</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -34,6 +35,19 @@ body {
   border-radius: 8px;
   padding: 40px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 500px) {
+  .login-container {
+    padding: 12px;
+  }
+  .login-box {
+    padding: 24px 16px;
+    border-radius: 6px;
+  }
+  .logo h1 {
+    font-size: 26px;
+  }
 }
 
 .logo {
