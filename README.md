@@ -34,13 +34,13 @@ docker run -d \
   --name shellia \
   -p 8000:8000 \
   -e SECRET_KEY=your-secret-key-here \
-  -e ANTHROPIC_API_KEY=sk-ant-... \
-  -e AI_PROVIDER=claude \
   -v shellia_data:/app/data \
   -v shellia_users:/app/users \
   --restart unless-stopped \
   blackbeardteam/shellia:latest
 ```
+
+> 💡 Once running, open the app and go to **Settings → APIs** to add your Claude or ChatGPT API key.
 
 Then open http://localhost:8000 🎉
 
@@ -89,18 +89,6 @@ cd ShellIA
 pip install -r requirements.txt
 ```
 
-**Configure your AI provider:**
-
-```bash
-# Option 1: Claude (recommended)
-export ANTHROPIC_API_KEY="sk-ant-api03-your-key"
-export AI_PROVIDER="claude"
-
-# Option 2: ChatGPT
-export OPENAI_API_KEY="sk-your-key"
-export AI_PROVIDER="chatgpt"
-```
-
 **Launch:**
 
 ```bash
@@ -125,7 +113,7 @@ Open http://localhost:8000 🎉
 | `TZ` | ❌ | `Europe/Paris` | Timezone |
 | `SHELLIA_PORT` | ❌ | `8000` | Exposed port (docker compose only) |
 
-> 💡 API keys can also be configured directly in the web interface (Settings → APIs).
+
 ### 🔑 About SECRET_KEY
 
 `SECRET_KEY` is used to **sign and verify JWT tokens** for user authentication.
