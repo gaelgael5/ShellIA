@@ -3,10 +3,11 @@
 # ============================================================================
 # SECRETS & CONFIGURATION
 # ============================================================================
+# Root .env files (secrets — never commit)
 .env
-.env.local
-.env.*.local
-*.env
+.env.*
+!environments/
+!environments/*.env
 
 # Clés API (au cas où)
 **/api_key.txt
