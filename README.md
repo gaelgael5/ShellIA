@@ -20,6 +20,7 @@ An interactive AI shell copilot (powered by Claude or ChatGPT) for Linux adminis
 - 📊 **Smart context** : AI sees command history
 - 💬 **AI Profiles** : Inject context per session (e.g. "I am on Proxmox")
 - 💻 **Split interface** : AI Chat + Interactive Terminal
+- 📱 **Responsive** : Mobile-friendly with a dedicated tab navigation (AI / Terminal)
 
 ---
 
@@ -291,6 +292,7 @@ Let's check the service status first:
 - [x] AI context profiles
 - [x] Docker support
 - [x] CI/CD with AppVeyor
+- [x] Responsive mobile interface (tab navigation)
 
 ### 🔜 Upcoming versions
 
