@@ -2,19 +2,17 @@
 # ShellIA - Docker Compose (Linux / Ubuntu)
 # ============================================================
 # Usage :
-#   Démarrer  : docker compose up -d
-#   Logs      : docker compose logs -f
-#   Arrêter   : docker compose down
-#   Rebuild   : docker compose up -d --build
+#   Start   : docker compose up -d
+#   Logs    : docker compose logs -f
+#   Stop    : docker compose down
+#   Rebuild : docker compose up -d --build
+#   Pull    : docker compose pull
 # ============================================================
 
 services:
 
   shellia:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: shellia:latest
+    image: blackbeardteam/shellia:latest
     container_name: shellia
     restart: unless-stopped
 
@@ -22,32 +20,22 @@ services:
       - "${SHELLIA_PORT:-8000}:8000"
 
     environment:
-      # ── Général ─────────────────────────────────────────
       - SHELLIA_ENV=${SHELLIA_ENV:-local}
       - TZ=${TZ:-Europe/Paris}
-
-      # ── Sécurité JWT ────────────────────────────────────
-      # ⚠️  Changez cette valeur en production !
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production-please}
-
-      # ── IA (optionnel si configuré dans l'interface) ────
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - AI_PROVIDER=${AI_PROVIDER:-claude}
-      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      # ⚠️  Generate with: openssl rand -hex 32
+      - SECRET_KEY=${SECRET_KEY:-}
 
     volumes:
-      # Base de données utilisateurs (SQLite)
+      # User database (SQLite)
       - shellia_data:/app/data
-      # Profils, environnements et APIs par utilisateur
+      # User profiles, environments and APIs
       - shellia_users:/app/users
-      # Environnements globaux
+      # Global environments
       - shellia_environments:/app/environments
 
     networks:
       - shellia_net
 
-    # ── Limites de ressources ────────────────────────────
     deploy:
       resources:
         limits:
