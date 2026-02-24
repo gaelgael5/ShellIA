@@ -1,99 +1,157 @@
 # 🤖 ShellIA - AI-Powered Shell Copilot
 
-Un copilote shell interactif alimenté par IA (Claude ou ChatGPT) pour l'administration Linux. L'IA suggère des commandes en langage naturel que vous validez avant exécution.
+An interactive AI shell copilot (powered by Claude or ChatGPT) for Linux administration. The AI suggests commands in natural language that you validate before execution.
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
+[![Docker](https://img.shields.io/badge/docker-blackbeardteam%2Fshellia-blue?logo=docker)](https://hub.docker.com/r/blackbeardteam/shellia)
+[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/gaelgael5/ShellIA?branch=main&svg=true)](https://ci.appveyor.com/project/gaelgael5/shellia)
 
 ---
 
-## ✨ Fonctionnalités
+## ✨ Features
 
-- 🗣️ **Langage naturel** : Posez vos questions en français/anglais
-- 🤖 **Multi-IA** : Support ChatGPT (OpenAI) et Claude (Anthropic)
-- 📝 **Markdown riche** : Réponses formatées et lisibles
-- 🎯 **Niveaux de risque** : Commandes colorées (vert/jaune/rouge)
-- 🔐 **Sécurité** : Validation explicite avant exécution
-- 📊 **Contexte intelligent** : L'IA voit l'historique des commandes
-- 💻 **Interface split** : Chat IA + Terminal interactif
+- 🗣️ **Natural language** : Ask questions in English or French
+- 🤖 **Multi-AI** : Supports ChatGPT (OpenAI) and Claude (Anthropic)
+- 📝 **Rich Markdown** : Formatted and readable responses
+- 🎯 **Risk levels** : Color-coded commands (green/yellow/red)
+- 🔐 **Security** : Explicit validation before execution
+- 📊 **Smart context** : AI sees command history
+- 💬 **AI Profiles** : Inject context per session (e.g. "I am on Proxmox")
+- 💻 **Split interface** : AI Chat + Interactive Terminal
 
 ---
 
-## 🚀 Démarrage rapide
+## 🚀 Quick Start
 
-### Installation
+### 🐳 Docker (recommended)
+
+**Option 1 — Docker run**
 
 ```bash
-git clone https://github.com/votre-repo/ShellIA.git
+docker run -d \
+  --name shellia \
+  -p 8000:8000 \
+  -e SECRET_KEY=your-secret-key-here \
+  -e ANTHROPIC_API_KEY=sk-ant-... \
+  -e AI_PROVIDER=claude \
+  -v shellia_data:/app/data \
+  -v shellia_users:/app/users \
+  --restart unless-stopped \
+  blackbeardteam/shellia:latest
+```
+
+Then open http://localhost:8000 🎉
+
+**Option 2 — Docker Compose**
+
+```bash
+# Clone the repo
+git clone https://github.com/gaelgael5/ShellIA.git
+cd ShellIA
+
+# Configure environment
+cp .env.docker .env
+# Edit .env with your API keys and a strong SECRET_KEY
+
+# Start
+docker compose up -d
+
+# View logs
+docker compose logs -f
+```
+
+Then open http://localhost:8000 🎉
+
+**Useful Docker commands:**
+
+```bash
+# Stop
+docker compose down
+
+# Rebuild after update
+docker compose up -d --build
+
+# View logs
+docker compose logs -f shellia
+
+# Remove containers but keep data
+docker compose down
+# (volumes shellia_data and shellia_users are preserved)
+```
+
+### 🐍 Local (Python)
+
+```bash
+git clone https://github.com/gaelgael5/ShellIA.git
 cd ShellIA
 pip install -r requirements.txt
 ```
 
-### Configuration
-
-**Option 1 : Claude (recommandé)**
+**Configure your AI provider:**
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-api03-votre-clé"
+# Option 1: Claude (recommended)
+export ANTHROPIC_API_KEY="sk-ant-api03-your-key"
 export AI_PROVIDER="claude"
-```
 
-**Option 2 : ChatGPT**
-
-```bash
-export OPENAI_API_KEY="sk-votre-clé"
+# Option 2: ChatGPT
+export OPENAI_API_KEY="sk-your-key"
 export AI_PROVIDER="chatgpt"
 ```
 
-### Lancement
+**Launch:**
 
 ```bash
 cd src
-py -m uvicorn main:app --reload
+python -m uvicorn main:app --reload
 ```
 
-Ouvrez http://localhost:8000 🎉
-
-➡️ **Guide complet** : [QUICKSTART.md](QUICKSTART.md)
+Open http://localhost:8000 🎉
 
 ---
 
-## 📸 Capture d'écran
+## ⚙️ Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SECRET_KEY` | ✅ | — | JWT secret key (use a strong random value) |
+| `AI_PROVIDER` | ❌ | `claude` | AI provider: `claude` or `chatgpt` |
+| `ANTHROPIC_API_KEY` | ❌ | — | Claude API key |
+| `OPENAI_API_KEY` | ❌ | — | OpenAI API key |
+| `CLAUDE_MODEL` | ❌ | `claude-sonnet-4-20250514` | Claude model to use |
+| `SHELLIA_ENV` | ❌ | `local` | Execution environment |
+| `TZ` | ❌ | `Europe/Paris` | Timezone |
+| `SHELLIA_PORT` | ❌ | `8000` | Exposed port (docker compose only) |
+
+> 💡 API keys can also be configured directly in the web interface (Settings → APIs).
+
+---
+
+## 📸 Screenshot
 
 ```
 ┌─────────────────────────────────────┬─────────────────────────────────────┐
-│  🤖 IA Copilot                      │  💻 Terminal                       │
+│  🤖 AI Copilot                      │  💻 Terminal                        │
 ├─────────────────────────────────────┼─────────────────────────────────────┤
 │                                     │                                     │
-│  Tapez votre question...            │  Prêt à exécuter des commandes...   │
+│  Ask your question...               │  Ready to execute commands...       │
 │  ┌────────────────────────────┐     │  ┌────────────────────────────┐     │
-│  │ Vérifie l'espace disque    │     │  │ $ df -h                    │     │
+│  │ Check disk space           │     │  │ $ df -h                    │     │
 │  └────────────────────────────┘     │  │ Filesystem  Size  Used...  │     │
 │                                     │  └────────────────────────────┘     │
-│  ## Vérification espace disque      │                                     │
+│  ## Disk space check                │                                     │
 │                                     │  ┌────────────────────────────┐     │
-│  Je recommande cette commande :     │  │ df -h                      │     │
+│  I recommend this command:          │  │ df -h                      │     │
 │                                     │  └────────────────────────────┘     │
-│  ┌────────────────────────────┐     │  ▶️ Exécuter (Entrée)              │
-│  │ ▶ df -h             [LOW]  │     │                                    │
-│  │ Affiche l'espace disque    │     │                                     │
+│  ┌────────────────────────────┐     │  ▶️ Execute (Enter)                 │
+│  │ ▶ df -h             [LOW]  │     │                                     │
+│  │ Shows disk usage           │     │                                     │
 │  └────────────────────────────┘     │                                     │
 │                                     │                                     │
 └─────────────────────────────────────┴─────────────────────────────────────┘
 ```
-
----
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [QUICKSTART.md](QUICKSTART.md) | 🚀 Guide de démarrage rapide |
-| [src/Description.md](src/Description.md) | 📋 Spécifications complètes du projet |
-| [CLAUDE_SETUP.md](src/CLAUDE_SETUP.md) | 🤖 Configuration détaillée pour Claude |
-| [CHANGES_MARKDOWN.md](src/CHANGES_MARKDOWN.md) | 📝 Implémentation du support Markdown |
-| [EXAMPLE_AI_RESPONSE.md](src/EXAMPLE_AI_RESPONSE.md) | 💡 Exemples de réponses IA |
 
 ---
 
@@ -102,204 +160,178 @@ Ouvrez http://localhost:8000 🎉
 ```
 ShellIA/
 ├── src/
-│   ├── main.py                 # Point d'entrée FastAPI
+│   ├── main.py                 # FastAPI entry point
 │   ├── core/
-│   │   ├── ai_interface.py     # Interface abstraite AIProvider
-│   │   ├── ai_chatgpt.py       # Implémentation ChatGPT
-│   │   ├── ai_claude.py        # Implémentation Claude
-│   │   ├── shell_executor.py   # Exécuteur de commandes
-│   │   └── context_store.py    # Historique des commandes
+│   │   ├── ai_interface.py     # Abstract AIProvider interface
+│   │   ├── ai_chatgpt.py       # ChatGPT implementation
+│   │   ├── ai_claude.py        # Claude implementation
+│   │   ├── shell_executor.py   # Command executor (local)
+│   │   ├── ssh_executor.py     # Command executor (SSH)
+│   │   ├── context_store.py    # Command + conversation history
+│   │   └── profile_manager.py  # AI context profiles
 │   └── ui/
-│       └── index.html          # Interface web
-├── requirements.txt            # Dépendances Python
-├── README.md                   # Ce fichier
-└── QUICKSTART.md              # Guide rapide
+│       └── index.html          # Web interface
+├── docker/
+│   └── entrypoint.sh           # Docker startup script
+├── Dockerfile                  # Ubuntu 22.04 based image
+├── docker-compose.yml          # Docker Compose configuration
+├── .env.docker                 # Environment variables template
+├── appveyor.yml                # CI/CD configuration
+├── requirements.txt            # Python dependencies
+└── README.md                   # This file
 ```
 
 ---
 
-## 🎯 Exemples d'utilisation
+## 🎯 Usage Examples
 
-### Diagnostic système
+### System diagnostics
 
-**Question :** "Vérifie l'utilisation CPU et mémoire"
+**Question:** "Check CPU and memory usage"
 
-**Réponse de l'IA :**
+**AI response:**
 ```markdown
-## Diagnostic CPU et mémoire
+## CPU and Memory Diagnostic
 
-Je vais vous proposer plusieurs commandes :
+Here are the recommended commands:
 
-```json
 {
   "commands": [
     {
       "cmd": "top -bn1 | head -20",
       "risk": "low",
-      "description": "Snapshot des processus actifs"
+      "description": "Snapshot of active processes"
     },
     {
       "cmd": "free -h",
       "risk": "low",
-      "description": "Utilisation de la mémoire"
+      "description": "Memory usage overview"
     }
   ]
 }
 ```
 
-Ces commandes sont sans risque et donnent une vue d'ensemble.
-```
+### Service management
 
-### Gestion de services
+**Question:** "nginx is not responding"
 
-**Question :** "Le service nginx ne répond plus"
-
-**Réponse de l'IA :**
+**AI response:**
 ```markdown
-## Diagnostic nginx
+## Nginx Diagnostic
 
-Vérifions d'abord l'état :
+Let's check the service status first:
 
-```json
 {
   "commands": [
     {
       "cmd": "systemctl status nginx",
       "risk": "low",
-      "description": "Vérifie l'état du service"
+      "description": "Check service status"
     }
   ]
 }
-```
 
-⚠️ Si le service est arrêté, nous pouvons le redémarrer (risque moyen).
+⚠️ If the service is stopped, we can restart it (medium risk).
 ```
 
 ---
 
-## 🔐 Sécurité
+## 🔐 Security
 
-### Principes de sécurité
+### Principles
 
-✅ **Validation humaine obligatoire** : Aucune commande n'est exécutée automatiquement
+✅ **Mandatory human validation** : No command is executed automatically
 
-✅ **Niveaux de risque visibles** :
-- 🟢 **LOW** (vert) : Lecture seule (`ls`, `cat`, `df`)
-- 🟡 **MEDIUM** (jaune) : Modifications (`systemctl restart`, `chmod`)
-- 🔴 **HIGH** (rouge clignotant) : Danger (`rm -rf`, `reboot`, `dd`)
+✅ **Visible risk levels** :
+- 🟢 **LOW** (green) : Read-only (`ls`, `cat`, `df`)
+- 🟡 **MEDIUM** (yellow) : Modifications (`systemctl restart`, `chmod`)
+- 🔴 **HIGH** (red/blinking) : Dangerous (`rm -rf`, `reboot`, `dd`)
 
-✅ **Double validation** :
-1. Clic sur le bouton → copie la commande
-2. Appui sur Entrée → exécute
+✅ **Two actions on commands** :
+- ▶️ **Execute button** → sends command to terminal and runs it
+- 📋 **Copy button** → inserts command in terminal without running
 
-✅ **Historique complet** : Toutes les commandes sont tracées
+✅ **Full audit trail** : All commands are tracked
 
-### ⚠️ Avertissements
+### ⚠️ Warnings
 
-- Ne faites **jamais** confiance aveuglément à l'IA
-- Vérifiez **toujours** les commandes avant exécution
-- Testez sur un environnement de **test** avant production
-- Faites attention aux commandes à **risque élevé**
+- **Never** blindly trust AI suggestions
+- **Always** verify commands before execution
+- Test on a **staging** environment before production
+- Pay special attention to **high-risk** commands
 
 ---
 
 ## 🆚 Claude vs ChatGPT
 
-| Critère | ChatGPT (gpt-4o-mini) | Claude (Sonnet 4) |
-|---------|----------------------|-------------------|
-| **Précision Linux** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Formatage Markdown** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Contexte** | 128k tokens | 200k tokens |
-| **Coût** | 💰 Moins cher | 💰💰 Plus cher |
-| **Rapidité** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| Criteria | ChatGPT (gpt-4o-mini) | Claude (Sonnet 4) |
+|----------|----------------------|-------------------|
+| **Linux accuracy** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Markdown formatting** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Context window** | 128k tokens | 200k tokens |
+| **Cost** | 💰 Cheaper | 💰💰 More expensive |
+| **Speed** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
 
-**Recommandation :** Claude Sonnet 4 pour la qualité, ChatGPT pour la vitesse/coût.
+**Recommendation:** Claude Sonnet 4 for quality, ChatGPT for speed/cost.
 
 ---
 
 ## 🛣️ Roadmap
 
-### ✅ Version actuelle (v1.0)
-- [x] Support ChatGPT et Claude
-- [x] Interface Markdown riche
-- [x] Validation explicite des commandes
-- [x] Niveaux de risque colorés
-- [x] Contexte intelligent
+### ✅ Current version (v1.0)
+- [x] ChatGPT and Claude support
+- [x] Rich Markdown interface
+- [x] Explicit command validation
+- [x] Color-coded risk levels
+- [x] Smart conversation history
+- [x] AI context profiles
+- [x] Docker support
+- [x] CI/CD with AppVeyor
 
-### 🔜 Prochaines versions
+### 🔜 Upcoming versions
 
-#### v1.1 - Gestion des profils
-- [ ] Profils spécialisés (Docker, Proxmox, Rescue)
-- [ ] Interface de gestion des profils
-- [ ] Sauvegarde/chargement de profils
+#### v1.1
+- [ ] Specialized profiles (Docker, Proxmox, Rescue mode)
+- [ ] WebSocket terminal for real interactive SSH
 
-#### v1.2 - Secrets et SSH
-- [ ] Gestion des secrets (mots de passe, clés)
-- [ ] Support SSH pour machines distantes
-- [ ] Exécution sur containers/VMs
+#### v1.2
+- [ ] Secret management (passwords, keys)
+- [ ] Full interactive terminal (xterm.js)
 
-#### v1.3 - Persistance
-- [ ] Base de données pour historique
-- [ ] Export/import de sessions
-- [ ] Recherche dans l'historique
-
-#### v2.0 - Avancé
-- [ ] Terminal interactif complet (xterm.js)
-- [ ] Multi-utilisateurs
-- [ ] Whitelist/blacklist de commandes
-- [ ] Monitoring en temps réel
+#### v2.0
+- [ ] Multi-user support
+- [ ] Command whitelist/blacklist
+- [ ] Real-time monitoring
 
 ---
 
-## 🤝 Contribution
+## 🤝 Contributing
 
-Les contributions sont bienvenues ! Voici comment contribuer :
+Contributions are welcome!
 
-1. **Fork** le projet
-2. **Créez une branche** : `git checkout -b feature/AmazingFeature`
-3. **Committez** : `git commit -m 'Add AmazingFeature'`
+1. **Fork** the project
+2. **Create a branch** : `git checkout -b feature/AmazingFeature`
+3. **Commit** : `git commit -m 'Add AmazingFeature'`
 4. **Push** : `git push origin feature/AmazingFeature`
-5. **Ouvrez une Pull Request**
-
-### Idées de contribution
-
-- 🐛 Correction de bugs
-- ✨ Nouvelles fonctionnalités
-- 📝 Amélioration de la documentation
-- 🌍 Traductions
-- 🎨 Amélioration de l'UI
+5. **Open a Pull Request**
 
 ---
 
 ## 📄 License
 
-Ce projet est sous licence MIT. Voir [LICENSE](LICENSE) pour plus de détails.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Remerciements
+## 🙏 Acknowledgements
 
-- [Anthropic](https://www.anthropic.com) pour Claude
-- [OpenAI](https://openai.com) pour ChatGPT
-- [FastAPI](https://fastapi.tiangolo.com) pour le framework web
-- [marked.js](https://marked.js.org) pour le parsing Markdown
-
----
-
-## 📞 Support & Contact
-
-- 🐛 **Issues** : [GitHub Issues](https://github.com/votre-repo/ShellIA/issues)
-- 💬 **Discussions** : [GitHub Discussions](https://github.com/votre-repo/ShellIA/discussions)
-- 📧 **Email** : votre-email@example.com
-
----
-
-## ⭐ Star History
-
-Si ce projet vous aide, n'hésitez pas à lui donner une ⭐ sur GitHub !
+- [Anthropic](https://www.anthropic.com) for Claude
+- [OpenAI](https://openai.com) for ChatGPT
+- [FastAPI](https://fastapi.tiangolo.com) for the web framework
+- [marked.js](https://marked.js.org) for Markdown parsing
 
 ---
 
 **Made with ❤️ for SysAdmins**
 
-*ShellIA - Votre copilote intelligent pour le shell Linux*
+*ShellIA — Your intelligent Linux shell copilot*
