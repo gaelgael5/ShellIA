@@ -1,0 +1,66 @@
+# ============================================================
+# ShellIA - Docker Compose (Linux / Ubuntu)
+# ============================================================
+# Usage :
+#   Démarrer  : docker compose up -d
+#   Logs      : docker compose logs -f
+#   Arrêter   : docker compose down
+#   Rebuild   : docker compose up -d --build
+# ============================================================
+
+services:
+
+  shellia:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: shellia:latest
+    container_name: shellia
+    restart: unless-stopped
+
+    ports:
+      - "${SHELLIA_PORT:-8000}:8000"
+
+    environment:
+      # ── Général ─────────────────────────────────────────
+      - SHELLIA_ENV=${SHELLIA_ENV:-local}
+      - TZ=${TZ:-Europe/Paris}
+
+      # ── Sécurité JWT ────────────────────────────────────
+      # ⚠️  Changez cette valeur en production !
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production-please}
+
+      # ── IA (optionnel si configuré dans l'interface) ────
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - AI_PROVIDER=${AI_PROVIDER:-claude}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+
+    volumes:
+      # Données utilisateurs (profiles, environnements, APIs)
+      - shellia_users:/app/users
+      # Environnements globaux
+      - shellia_environments:/app/environments
+
+    networks:
+      - shellia_net
+
+    # ── Limites de ressources ────────────────────────────
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
+
+volumes:
+  shellia_users:
+    name: shellia_users
+  shellia_environments:
+    name: shellia_environments
+
+networks:
+  shellia_net:
+    name: shellia_net
+    driver: bridge
