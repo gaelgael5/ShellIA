@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict
 from pathlib import Path
 from datetime import timedelta
 import os
@@ -17,6 +17,7 @@ from core.shell_executor import ShellExecutor
 from core.context_store import ContextStore
 from core.environment_manager import EnvironmentManager
 from core.api_manager import APIManager
+from core.profile_manager import ProfileManager
 from core.auth import user_manager, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
 
 # Charger les variables d'environnement depuis le dossier environments/
@@ -93,6 +94,9 @@ class UserSession:
         )
         self.api_manager = APIManager(
             config_file=USERS_DIR / email / "apis.json"
+        )
+        self.profile_manager = ProfileManager(
+            profiles_file=USERS_DIR / email / "profiles.json"
         )
 
     def init_from_environment(self, env_name: str, ssh_password: Optional[str] = None):
@@ -483,6 +487,8 @@ def get_me(current_user: dict = Depends(get_current_user)):
 
 class AiRequest(BaseModel):
     message: str
+    chat_history: Optional[List[Dict]] = None
+    profile_id: Optional[str] = None
 
 
 class ExecuteRequest(BaseModel):
@@ -494,8 +500,23 @@ def ai_suggest(req: AiRequest, current_user: dict = Depends(get_current_user)):
     session = get_user_session(current_user["email"])
     if not session.ai_provider:
         raise HTTPException(status_code=400, detail="Aucun provider IA configuré. Chargez un environnement.")
+
     context = session.context_store.get()
-    result = session.ai_provider.ask(context, req.message)
+    chat_history = req.chat_history or []
+
+    # Récupérer le prompt du profil actif si spécifié
+    system_profile = None
+    if req.profile_id:
+        profile = session.profile_manager.get_profile(req.profile_id)
+        if profile:
+            system_profile = profile.get("prompt")
+
+    result = session.ai_provider.ask(
+        context=context,
+        user_message=req.message,
+        chat_history=chat_history,
+        system_profile=system_profile
+    )
     return result
 
 
@@ -659,3 +680,49 @@ def load_environment(env_name: str, body: LoadEnvironmentBody = LoadEnvironmentB
         import traceback
         traceback.print_exc()
         return {"success": False, "message": str(e)}
+
+# ============================================================================
+# Endpoints protégés - Gestion des Profils IA
+# ============================================================================
+
+class ProfileData(BaseModel):
+    data: dict
+
+
+@app.get("/profiles")
+def list_profiles(current_user: dict = Depends(get_current_user)):
+    """Liste tous les profils IA de l'utilisateur."""
+    session = get_user_session(current_user["email"])
+    return session.profile_manager.list_profiles()
+
+
+@app.get("/profiles/{profile_id}")
+def get_profile(profile_id: str, current_user: dict = Depends(get_current_user)):
+    session = get_user_session(current_user["email"])
+    profile = session.profile_manager.get_profile(profile_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Profil non trouvé")
+    return profile
+
+
+@app.post("/profiles/{profile_id}")
+def create_profile(profile_id: str, payload: ProfileData, current_user: dict = Depends(get_current_user)):
+    session = get_user_session(current_user["email"])
+    data = payload.data
+    data["id"] = profile_id
+    success = session.profile_manager.create_profile(data)
+    return {"success": success, "message": "Profil créé" if success else "ID déjà utilisé"}
+
+
+@app.put("/profiles/{profile_id}")
+def update_profile(profile_id: str, payload: ProfileData, current_user: dict = Depends(get_current_user)):
+    session = get_user_session(current_user["email"])
+    success = session.profile_manager.update_profile(profile_id, payload.data)
+    return {"success": success, "message": "Profil mis à jour" if success else "Profil non trouvé"}
+
+
+@app.delete("/profiles/{profile_id}")
+def delete_profile(profile_id: str, current_user: dict = Depends(get_current_user)):
+    session = get_user_session(current_user["email"])
+    success = session.profile_manager.delete_profile(profile_id)
+    return {"success": success, "message": "Profil supprimé" if success else "Profil non trouvé"}
