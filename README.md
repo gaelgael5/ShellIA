@@ -105,35 +105,27 @@ Open http://localhost:8000 🎉
 
 ShellIA runs well inside a **Proxmox LXC container** (Ubuntu 22.04 recommended).
 
-### Prerequisites
+> ⚠️ In the Proxmox LXC config, enable **nesting = 1** and **keyctl = 1** to allow Docker to run inside the container.
+
+### One-line setup (recommended)
+
+The setup script installs **Docker**, **Portainer** and **ShellIA** automatically.  
+It also asks whether you want to install **Watchtower** for automatic updates.
 
 ```bash
-# Inside your LXC container — install Docker
-apt update && apt install -y ca-certificates curl gnupg
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-chmod a+r /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-  https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-  | tee /etc/apt/sources.list.d/docker.list > /dev/null
-apt update && apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+curl -fsSL https://raw.githubusercontent.com/gaelgael5/ShellIA/main/scripts/setup-proxmox.sh \
+  | sudo bash
 ```
 
-> ⚠️ In the Proxmox LXC config, set **nesting = 1** and **keyctl = 1** to allow Docker to run.
-
-### Start ShellIA
+Or download and inspect first:
 
 ```bash
-mkdir -p /opt/shellia && cd /opt/shellia
-curl -O https://raw.githubusercontent.com/gaelgael5/ShellIA/main/docker-compose.yml
-curl -O https://raw.githubusercontent.com/gaelgael5/ShellIA/main/.env.docker
-cp .env.docker .env
-
-# Edit .env and set a strong SECRET_KEY
-# openssl rand -hex 32
-
-docker compose up -d
+curl -O https://raw.githubusercontent.com/gaelgael5/ShellIA/main/scripts/setup-proxmox.sh
+chmod +x setup-proxmox.sh
+sudo ./setup-proxmox.sh
 ```
+
+At the end of the install, the script prints the URLs for ShellIA and Portainer.
 
 ---
 
