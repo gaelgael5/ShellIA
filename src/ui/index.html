@@ -846,6 +846,57 @@ button:disabled {
 .modal-btn-secondary:hover {
   background: #4c4c4c;
 }
+
+/* Profil actif badge dans le header */
+#activeProfileBadge {
+  display: none;
+  padding: 4px 10px;
+  background: #264f78;
+  border: 1px solid #007acc;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #9cdcfe;
+  cursor: pointer;
+}
+#activeProfileBadge:hover {
+  background: #1e3f5a;
+}
+
+/* Boutons de commande - container avec deux boutons */
+.cmd-actions {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+}
+.cmd-execute-btn {
+  flex: 1;
+  padding: 9px 14px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  text-align: left;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.cmd-execute-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+.cmd-copy-btn {
+  padding: 9px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background: #3c3c3c;
+  color: #cccccc;
+  font-size: 14px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.cmd-copy-btn:hover {
+  background: #505050;
+}
 </style>
 </head>
 <body>
@@ -855,6 +906,7 @@ button:disabled {
     <h3 style="margin: 0; font-size: 18px; color: #ffffff;">🤖 IA Copilot</h3>
     <div style="display: flex; align-items: center; gap: 10px;">
       <span id="userDisplayName" style="color: #858585; font-size: 13px;"></span>
+      <span id="activeProfileBadge" onclick="toggleEnvSidebar(); switchSidebarTab('profiles')"></span>
       <button onclick="logout()" style="background: #5a1d1d; color: #f48fb1; border: 1px solid #c50f1f; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer;" title="Se déconnecter">Déconnexion</button>
     </div>
   </div>
@@ -900,6 +952,7 @@ button:disabled {
   <div class="sidebar-tabs">
     <button class="sidebar-tab active" onclick="switchSidebarTab('apis')">🔑 APIs IA</button>
     <button class="sidebar-tab" onclick="switchSidebarTab('environments')">🌍 Environnements</button>
+    <button class="sidebar-tab" onclick="switchSidebarTab('profiles')">💬 Profils IA</button>
   </div>
 
   <!-- Contenu APIs -->
@@ -920,6 +973,16 @@ button:disabled {
     <div id="envFormContainer" style="display: none;"></div>
 
     <div class="env-list" id="envList">
+      <p style="color: #858585; text-align: center;">Chargement...</p>
+    </div>
+  </div>
+
+  <!-- Contenu Profils -->
+  <div id="profilesTab" class="tab-content" style="display: none;">
+    <p style="color: #858585; font-size: 12px; margin-top: 0;">Les profils injectent un contexte dans la conversation IA (ex: "Je suis sur Proxmox").</p>
+    <button class="btn-create" onclick="showCreateProfileForm()">+ Nouveau Profil</button>
+    <div id="profileFormContainer" style="display: none;"></div>
+    <div class="env-list" id="profileList">
       <p style="color: #858585; text-align: center;">Chargement...</p>
     </div>
   </div>
@@ -985,6 +1048,9 @@ async function authFetch(url, options = {}) {
 const tabs = {};
 let activeTabId = null;
 let tabCounter = 0;
+
+// Profil actif pour la conversation IA
+let activeProfileId = null;
 
 // Configuration commune des terminaux
 const terminalConfig = {
@@ -1606,6 +1672,28 @@ function copyToTerminal(cmd) {
   }, 100);
 }
 
+// Envoie une commande dans le terminal ET l'exécute
+function executeInTerminal(cmd) {
+  if (!activeTabId || !tabs[activeTabId]) {
+    alert("Aucun terminal actif");
+    return;
+  }
+
+  const tab = tabs[activeTabId];
+  const term = tab.term;
+
+  // Afficher la commande dans le terminal
+  tab.currentLine = '';
+  tab.cursorPosition = 0;
+  term.write('\r\n');
+
+  // Écrire la commande visuellement
+  term.write(tab.prompt + '\x1b[36m' + cmd + '\x1b[0m\r\n');
+
+  // Exécuter
+  executeCommand(cmd, activeTabId);
+}
+
 // ============================================================================
 // Partie IA (inchangée)
 // ============================================================================
@@ -1634,9 +1722,10 @@ function removeJsonBlocks(markdown) {
 
 async function askAI(customMessage = null) {
   const msg = customMessage || document.getElementById("userMsg").value.trim();
+  if (!msg) return;
 
-  if (!msg) {
-    alert("Veuillez saisir un message");
+  if (!activeTabId || !tabs[activeTabId]) {
+    alert("Aucun onglet actif");
     return;
   }
 
@@ -1644,10 +1733,9 @@ async function askAI(customMessage = null) {
   const sendBtn = document.getElementById("sendBtn");
   const chatMessages = document.getElementById("chatMessages");
 
-  // Ajouter le message de l'utilisateur
-  addChatMessage(msg, 'user');
+  // Ajouter le message de l'utilisateur dans l'UI
+  addChatMessage(msg, 'user', msg);
 
-  // Vider la zone de saisie (seulement si pas de message personnalisé)
   if (!customMessage) {
     document.getElementById("userMsg").value = "";
   }
@@ -1656,102 +1744,90 @@ async function askAI(customMessage = null) {
   sendBtn.disabled = true;
 
   try {
+    // Construire l'historique de conversation pour l'IA (texte brut seulement)
+    const chatHistoryForAI = tabs[activeTabId].chatMessages
+      .slice(0, -1) // Exclure le dernier message (celui qu'on vient d'ajouter)
+      .filter(m => m.textContent)
+      .map(m => ({ role: m.role, content: m.textContent }));
+
     const res = await authFetch("/ai/suggest", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({message: msg})
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: msg,
+        chat_history: chatHistoryForAI,
+        profile_id: activeProfileId
+      })
     });
 
-    if (!res.ok) {
-      throw new Error(`Erreur HTTP: ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`Erreur HTTP: ${res.status}`);
 
     const responseData = await res.json();
-    let markdownContent = "";
-
-    if (typeof responseData === 'string') {
-      markdownContent = responseData;
-    } else if (responseData.markdown) {
-      markdownContent = responseData.markdown;
-    } else {
-      markdownContent = responseData.explanation || "";
-    }
+    let markdownContent = responseData.markdown || responseData.explanation || "";
 
     const jsonBlocks = extractJsonBlocks(markdownContent);
     const cleanMarkdown = removeJsonBlocks(markdownContent);
 
-    // Créer la bulle de message de l'IA
-    const assistantBubble = addChatMessage('', 'assistant');
+    // Créer la bulle de réponse IA
+    const assistantBubble = addChatMessage('', 'assistant', markdownContent);
     assistantBubble.innerHTML = marked.parse(cleanMarkdown);
 
-    // Ajouter les boutons de commandes
+    // Ajouter les boutons de commandes (▶ Exécuter + 📋 Copier)
+    const allCommands = [];
     jsonBlocks.forEach(block => {
       if (block.commands && Array.isArray(block.commands)) {
-        block.commands.forEach(cmd => {
-          const btnContainer = document.createElement("div");
-          btnContainer.style.marginTop = "8px";
-
-          const b = document.createElement("button");
-          b.className = `command-button risk-${cmd.risk}`;
-          b.innerHTML = `▶ ${cmd.cmd}`;
-
-          if (cmd.description) {
-            const desc = document.createElement("div");
-            desc.className = "command-desc";
-            desc.textContent = cmd.description;
-            b.appendChild(desc);
-          }
-
-          b.onclick = () => copyToTerminal(cmd.cmd);
-          btnContainer.appendChild(b);
-          assistantBubble.appendChild(btnContainer);
-        });
+        block.commands.forEach(cmd => allCommands.push(cmd));
       }
     });
-
     if (responseData.commands && Array.isArray(responseData.commands)) {
-      responseData.commands.forEach(cmd => {
-        const btnContainer = document.createElement("div");
-        btnContainer.style.marginTop = "8px";
-
-        const b = document.createElement("button");
-        b.className = `command-button risk-${cmd.risk}`;
-        b.innerHTML = `▶ ${cmd.cmd}`;
-
-        if (cmd.description) {
-          const desc = document.createElement("div");
-          desc.className = "command-desc";
-          desc.textContent = cmd.description;
-          b.appendChild(desc);
-        }
-
-        b.onclick = () => copyToTerminal(cmd.cmd);
-        btnContainer.appendChild(b);
-        assistantBubble.appendChild(btnContainer);
-      });
+      responseData.commands.forEach(cmd => allCommands.push(cmd));
     }
 
-    // Mettre à jour le contenu stocké dans l'historique de l'onglet avec le HTML final
-    if (activeTabId && tabs[activeTabId] && tabs[activeTabId].chatMessages.length > 0) {
-      const lastMessage = tabs[activeTabId].chatMessages[tabs[activeTabId].chatMessages.length - 1];
-      if (lastMessage.role === 'assistant') {
-        lastMessage.content = assistantBubble.innerHTML;
+    allCommands.forEach(cmd => {
+      const container = document.createElement("div");
+      container.className = "cmd-actions";
+
+      // Bouton Exécuter (▶)
+      const execBtn = document.createElement("button");
+      execBtn.className = `cmd-execute-btn risk-${cmd.risk}`;
+      execBtn.innerHTML = `▶ ${cmd.cmd}`;
+      if (cmd.description) {
+        const desc = document.createElement("div");
+        desc.className = "command-desc";
+        desc.textContent = cmd.description;
+        execBtn.appendChild(desc);
+      }
+      execBtn.onclick = () => executeInTerminal(cmd.cmd);
+
+      // Bouton Copier dans la console (📋)
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "cmd-copy-btn";
+      copyBtn.title = "Copier dans le terminal sans exécuter";
+      copyBtn.textContent = "📋";
+      copyBtn.onclick = () => copyToTerminal(cmd.cmd);
+
+      container.appendChild(execBtn);
+      container.appendChild(copyBtn);
+      assistantBubble.appendChild(container);
+    });
+
+    // Mettre à jour le contenu HTML stocké dans l'historique
+    if (tabs[activeTabId] && tabs[activeTabId].chatMessages.length > 0) {
+      const lastMsg = tabs[activeTabId].chatMessages[tabs[activeTabId].chatMessages.length - 1];
+      if (lastMsg.role === 'assistant') {
+        lastMsg.htmlContent = assistantBubble.innerHTML;
       }
     }
 
+    // Auto-scroll
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
   } catch (error) {
-    const errorBubble = addChatMessage('', 'assistant');
+    const errorBubble = addChatMessage('', 'assistant', '');
     errorBubble.innerHTML = `<div style="color: #f14c4c; padding: 10px; background: #3b1f1f; border-left: 4px solid #c50f1f; border-radius: 4px;">
       <strong>❌ Erreur:</strong> ${error.message}
     </div>`;
-
-    // Mettre à jour le contenu stocké pour le message d'erreur aussi
-    if (activeTabId && tabs[activeTabId] && tabs[activeTabId].chatMessages.length > 0) {
-      const lastMessage = tabs[activeTabId].chatMessages[tabs[activeTabId].chatMessages.length - 1];
-      if (lastMessage.role === 'assistant') {
-        lastMessage.content = errorBubble.innerHTML;
-      }
-    }
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   } finally {
     loadingIndicator.classList.remove("active");
     sendBtn.disabled = false;
@@ -1759,11 +1835,8 @@ async function askAI(customMessage = null) {
 }
 
 // Fonction helper pour ajouter un message au chat
-function addChatMessage(content, role) {
-  if (!activeTabId || !tabs[activeTabId]) {
-    console.warn("Aucun onglet actif pour ajouter un message");
-    return null;
-  }
+function addChatMessage(content, role, textContent = '') {
+  if (!activeTabId || !tabs[activeTabId]) return null;
 
   const chatMessages = document.getElementById("chatMessages");
 
@@ -1784,14 +1857,15 @@ function addChatMessage(content, role) {
   messageDiv.appendChild(bubbleDiv);
   chatMessages.appendChild(messageDiv);
 
-  // Sauvegarder le message dans l'historique de l'onglet actif
-  // On stocke le contenu HTML final pour pouvoir le restaurer tel quel
+  // Stocker dans l'historique avec le texte brut pour l'IA
   tabs[activeTabId].chatMessages.push({
     role: role,
-    content: bubbleDiv.innerHTML // Stocker le HTML rendu
+    content: bubbleDiv.innerHTML,
+    textContent: textContent || (role === 'user' ? content : ''),
+    htmlContent: bubbleDiv.innerHTML
   });
 
-  // Scroll vers le bas
+  // Auto-scroll
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
   return bubbleDiv;
@@ -1817,25 +1891,25 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================================
 
 function switchSidebarTab(tabName) {
-  // Masquer tous les contenus
   document.querySelectorAll('.tab-content').forEach(tab => {
     tab.style.display = 'none';
   });
-
-  // Désactiver tous les onglets
   document.querySelectorAll('.sidebar-tab').forEach(tab => {
     tab.classList.remove('active');
   });
-
-  // Afficher l'onglet sélectionné
+  const tabButtons = document.querySelectorAll('.sidebar-tab');
   if (tabName === 'apis') {
     document.getElementById('apisTab').style.display = 'block';
-    document.querySelectorAll('.sidebar-tab')[0].classList.add('active');
+    tabButtons[0].classList.add('active');
     loadAPIs();
   } else if (tabName === 'environments') {
     document.getElementById('environmentsTab').style.display = 'block';
-    document.querySelectorAll('.sidebar-tab')[1].classList.add('active');
+    tabButtons[1].classList.add('active');
     loadEnvironments();
+  } else if (tabName === 'profiles') {
+    document.getElementById('profilesTab').style.display = 'block';
+    tabButtons[2].classList.add('active');
+    loadProfiles();
   }
 }
 
@@ -2603,6 +2677,198 @@ function showConfirm(message) {
     });
   });
 }
+
+// ============================================================================
+// Gestion des Profils IA
+// ============================================================================
+
+async function loadProfiles() {
+  const list = document.getElementById('profileList');
+  try {
+    const res = await authFetch('/profiles');
+    const profiles = await res.json();
+
+    if (profiles.length === 0) {
+      list.innerHTML = '<p style="color: #858585; text-align: center;">Aucun profil créé</p>';
+      return;
+    }
+
+    list.innerHTML = '';
+    profiles.forEach(p => {
+      const item = document.createElement('div');
+      item.className = `env-item${activeProfileId === p.id ? ' active' : ''}`;
+      item.innerHTML = `
+        <div class="env-item-header">
+          <span class="env-item-name">${p.name}</span>
+          ${activeProfileId === p.id
+            ? '<span class="env-item-badge badge-active">ACTIF</span>'
+            : '<span class="env-item-badge badge-local">Inactif</span>'}
+        </div>
+        ${p.description ? `<div class="env-item-desc">${p.description}</div>` : ''}
+        <div style="color: #858585; font-size: 11px; margin-bottom: 8px; font-style: italic; max-height: 3em; overflow: hidden;">${p.prompt ? p.prompt.substring(0, 120) + (p.prompt.length > 120 ? '...' : '') : ''}</div>
+        <div class="env-item-actions">
+          <button class="${activeProfileId === p.id ? 'btn-delete' : 'btn-load'}" onclick="${activeProfileId === p.id ? `deactivateProfile()` : `activateProfile('${p.id}', '${p.name}')`}">
+            ${activeProfileId === p.id ? '⏹ Désactiver' : '✅ Activer'}
+          </button>
+          <button class="btn-edit" onclick="editProfile('${p.id}')">✏️</button>
+          <button class="btn-delete" onclick="deleteProfileById('${p.id}')">🗑️</button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+  } catch (error) {
+    list.innerHTML = `<p style="color: #f14c4c;">Erreur: ${error.message}</p>`;
+  }
+}
+
+function activateProfile(profileId, profileName) {
+  activeProfileId = profileId;
+  const badge = document.getElementById('activeProfileBadge');
+  badge.textContent = '💬 ' + profileName;
+  badge.style.display = 'inline-block';
+  loadProfiles();
+}
+
+function deactivateProfile() {
+  activeProfileId = null;
+  const badge = document.getElementById('activeProfileBadge');
+  badge.style.display = 'none';
+  loadProfiles();
+}
+
+function showCreateProfileForm() {
+  const container = document.getElementById('profileFormContainer');
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="env-form">
+      <h3>Nouveau Profil</h3>
+      <div class="form-group">
+        <label>ID (sans espaces)</label>
+        <input type="text" id="newProfileId" placeholder="proxmox" />
+      </div>
+      <div class="form-group">
+        <label>Nom d'affichage</label>
+        <input type="text" id="newProfileName" placeholder="Proxmox" />
+      </div>
+      <div class="form-group">
+        <label>Description (optionnel)</label>
+        <input type="text" id="newProfileDesc" placeholder="Hyperviseur Proxmox..." />
+      </div>
+      <div class="form-group">
+        <label>Prompt (contexte injecté dans la conversation IA)</label>
+        <textarea id="newProfilePrompt" rows="4" style="width:100%; resize:vertical;" placeholder="Je suis sur Proxmox VE 8.x. Les VMs sont gérées avec qm, les containers avec pct..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button onclick="cancelProfileForm()" style="background: #4a4a4a;">Annuler</button>
+        <button onclick="saveNewProfile()" style="background: #0e7a0d;">Créer</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveNewProfile() {
+  const id = document.getElementById('newProfileId').value.trim();
+  const name = document.getElementById('newProfileName').value.trim();
+  const desc = document.getElementById('newProfileDesc').value.trim();
+  const prompt = document.getElementById('newProfilePrompt').value.trim();
+
+  if (!id || !name || !prompt) {
+    alert('ID, nom et prompt sont requis');
+    return;
+  }
+
+  try {
+    const res = await authFetch(`/profiles/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { id, name, description: desc, prompt } })
+    });
+    const result = await res.json();
+    if (result.success) {
+      cancelProfileForm();
+      loadProfiles();
+    } else {
+      alert('Erreur: ' + result.message);
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+async function editProfile(profileId) {
+  const res = await authFetch(`/profiles/${profileId}`);
+  const p = await res.json();
+
+  const container = document.getElementById('profileFormContainer');
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="env-form">
+      <h3>Modifier: ${p.name}</h3>
+      <div class="form-group">
+        <label>Nom</label>
+        <input type="text" id="editProfileName" value="${p.name || ''}" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="editProfileDesc" value="${p.description || ''}" />
+      </div>
+      <div class="form-group">
+        <label>Prompt</label>
+        <textarea id="editProfilePrompt" rows="4" style="width:100%; resize:vertical;">${p.prompt || ''}</textarea>
+      </div>
+      <div class="form-actions">
+        <button onclick="cancelProfileForm()" style="background: #4a4a4a;">Annuler</button>
+        <button onclick="saveEditProfile('${profileId}')" style="background: #0e639c;">Sauvegarder</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveEditProfile(profileId) {
+  const name = document.getElementById('editProfileName').value.trim();
+  const desc = document.getElementById('editProfileDesc').value.trim();
+  const prompt = document.getElementById('editProfilePrompt').value.trim();
+
+  try {
+    const res = await authFetch(`/profiles/${profileId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { name, description: desc, prompt } })
+    });
+    const result = await res.json();
+    if (result.success) {
+      if (activeProfileId === profileId) {
+        document.getElementById('activeProfileBadge').textContent = '💬 ' + name;
+      }
+      cancelProfileForm();
+      loadProfiles();
+    } else {
+      alert('Erreur: ' + result.message);
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+async function deleteProfileById(profileId) {
+  if (!confirm('Supprimer ce profil ?')) return;
+  try {
+    const res = await authFetch(`/profiles/${profileId}`, { method: 'DELETE' });
+    const result = await res.json();
+    if (result.success) {
+      if (activeProfileId === profileId) deactivateProfile();
+      loadProfiles();
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+function cancelProfileForm() {
+  document.getElementById('profileFormContainer').style.display = 'none';
+  document.getElementById('profileFormContainer').innerHTML = '';
+}
+
 </script>
 
 </body>
