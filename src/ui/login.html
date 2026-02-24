@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>ShellIA - Connexion</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #1e1e1e;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #cccccc;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 450px;
+  padding: 20px;
+}
+
+.login-box {
+  background: #252526;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  padding: 40px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.logo {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo h1 {
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.logo p {
+  color: #858585;
+  font-size: 14px;
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 30px;
+  border-bottom: 1px solid #404040;
+}
+
+.tab {
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  color: #858585;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tab:hover {
+  color: #cccccc;
+}
+
+.tab.active {
+  color: #ffffff;
+  border-bottom-color: #007acc;
+}
+
+.form-container {
+  display: none;
+}
+
+.form-container.active {
+  display: block;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #cccccc;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px;
+  background: #1e1e1e;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  color: #cccccc;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+.form-input::placeholder {
+  color: #666666;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: #007acc;
+  color: #ffffff;
+  margin-bottom: 16px;
+}
+
+.btn-primary:hover {
+  background: #005a9e;
+}
+
+.btn-primary:disabled {
+  background: #404040;
+  color: #666666;
+  cursor: not-allowed;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 24px 0;
+  color: #858585;
+  font-size: 13px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #404040;
+}
+
+.divider::before {
+  margin-right: 16px;
+}
+
+.divider::after {
+  margin-left: 16px;
+}
+
+.btn-google {
+  width: 100%;
+  padding: 12px;
+  background: #ffffff;
+  color: #333333;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: background 0.2s;
+}
+
+.btn-google:hover {
+  background: #f8f9fa;
+}
+
+.btn-google img {
+  width: 18px;
+  height: 18px;
+}
+
+.error-message {
+  background: #5a1d1d;
+  border: 1px solid #c50f1f;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 20px;
+  color: #f48fb1;
+  font-size: 13px;
+  display: none;
+}
+
+.error-message.visible {
+  display: block;
+}
+
+.success-message {
+  background: #1d5a1d;
+  border: 1px solid #0e7a0d;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 20px;
+  color: #b1f48f;
+  font-size: 13px;
+  display: none;
+}
+
+.success-message.visible {
+  display: block;
+}
+
+.loading {
+  display: none;
+  text-align: center;
+  color: #007acc;
+  font-size: 13px;
+  margin-top: 16px;
+}
+
+.loading.visible {
+  display: block;
+}
+
+.google-signin-button {
+  margin-top: 16px;
+}
+
+/* Style pour le bouton Google One Tap */
+#g_id_onload {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+.btn-microsoft {
+  width: 100%;
+  padding: 12px;
+  background: #ffffff;
+  color: #5e5e5e;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: background 0.2s;
+  margin-top: 10px;
+  font-family: inherit;
+}
+
+.btn-microsoft:hover {
+  background: #f8f9fa;
+}
+
+.btn-facebook {
+  width: 100%;
+  padding: 12px;
+  background: #1877f2;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: background 0.2s;
+  margin-top: 10px;
+  font-family: inherit;
+}
+
+.btn-facebook:hover {
+  background: #166fe5;
+}
+</style>
+</head>
+<body>
+
+<div class="login-container">
+  <div class="login-box">
+    <div class="logo">
+      <h1>🚀 ShellIA</h1>
+      <p>IA Copilot pour votre terminal</p>
+    </div>
+
+    <!-- Onglets -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchAuthTab('login')">Connexion</div>
+      <div class="tab" onclick="switchAuthTab('register')">Inscription</div>
+    </div>
+
+    <!-- Messages d'erreur/succès -->
+    <div id="errorMessage" class="error-message"></div>
+    <div id="successMessage" class="success-message"></div>
+
+    <!-- Formulaire de connexion -->
+    <div id="loginForm" class="form-container active">
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" class="form-input" placeholder="votre@email.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loginPassword">Mot de passe</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="loginButton">
+          Se connecter
+        </button>
+      </form>
+
+      <div class="divider">ou</div>
+
+      <!-- Bouton Google Sign-In -->
+      <div id="g_id_signin" class="google-signin-button"></div>
+
+      <!-- Bouton Microsoft Sign-In -->
+      <button id="microsoftLoginBtn" class="btn-microsoft" onclick="handleMicrosoftSignIn()" style="display: none;">
+        <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+        Se connecter avec Microsoft
+      </button>
+
+      <!-- Bouton Facebook Sign-In -->
+      <button id="facebookLoginBtn" class="btn-facebook" onclick="handleFacebookSignIn()" style="display: none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        Se connecter avec Facebook
+      </button>
+
+      <div class="loading" id="loginLoading">Connexion en cours...</div>
+    </div>
+
+    <!-- Formulaire d'inscription -->
+    <div id="registerForm" class="form-container">
+      <form onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label class="form-label" for="registerName">Nom complet (optionnel)</label>
+          <input type="text" id="registerName" class="form-input" placeholder="John Doe">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="registerEmail">Email</label>
+          <input type="email" id="registerEmail" class="form-input" placeholder="votre@email.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="registerPassword">Mot de passe</label>
+          <input type="password" id="registerPassword" class="form-input" placeholder="••••••••" required minlength="8">
+          <small style="color: #858585; font-size: 12px; display: block; margin-top: 4px;">
+            Minimum 8 caractères
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="registerPasswordConfirm">Confirmer le mot de passe</label>
+          <input type="password" id="registerPasswordConfirm" class="form-input" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="registerButton">
+          Créer un compte
+        </button>
+      </form>
+
+      <div class="divider">ou</div>
+
+      <!-- Bouton Google Sign-In pour inscription -->
+      <div id="g_id_signin_register" class="google-signin-button"></div>
+
+      <!-- Bouton Microsoft Sign-In pour inscription -->
+      <button id="microsoftRegisterBtn" class="btn-microsoft" onclick="handleMicrosoftSignIn()" style="display: none;">
+        <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+        S'inscrire avec Microsoft
+      </button>
+
+      <!-- Bouton Facebook Sign-In pour inscription -->
+      <button id="facebookRegisterBtn" class="btn-facebook" onclick="handleFacebookSignIn()" style="display: none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        S'inscrire avec Facebook
+      </button>
+
+      <div class="loading" id="registerLoading">Création du compte...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Configuration
+const API_URL = window.location.origin;
+
+// État de l'application
+let currentTab = 'login';
+
+// Configuration auth (chargée depuis le serveur)
+let authConfig = { google_enabled: false, google_client_id: null, microsoft_enabled: false, facebook_enabled: false };
+
+// Vérifier si déjà connecté au chargement
+window.addEventListener('DOMContentLoaded', async () => {
+  // Vérifier si on revient d'un callback Microsoft avec un token dans l'URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const callbackToken = urlParams.get('token');
+  if (callbackToken) {
+    localStorage.setItem('authToken', callbackToken);
+    const userEmail = urlParams.get('user_email') || '';
+    const userName = urlParams.get('user_name') || '';
+    localStorage.setItem('user', JSON.stringify({ email: userEmail, full_name: userName }));
+    window.location.href = '/';
+    return;
+  }
+
+  // Vérifier si une erreur est retournée
+  const errorParam = urlParams.get('error');
+  if (errorParam) {
+    showError(decodeURIComponent(errorParam));
+  }
+
+  const token = localStorage.getItem('authToken');
+
+  if (token) {
+    const valid = await verifyToken(token);
+    if (valid) {
+      window.location.href = '/';
+      return;
+    } else {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+    }
+  }
+
+  // Charger la configuration auth depuis le serveur
+  try {
+    const res = await fetch(`${API_URL}/auth/config`);
+    if (res.ok) {
+      authConfig = await res.json();
+    }
+  } catch (e) {
+    console.warn('Impossible de charger la config auth:', e);
+  }
+
+  // Initialiser Google Sign-In si activé
+  if (authConfig.google_enabled) {
+    initGoogleSignIn();
+  } else {
+    document.querySelectorAll('.google-signin-button').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
+
+  // Afficher le bouton Microsoft si activé
+  if (authConfig.microsoft_enabled) {
+    document.querySelectorAll('.btn-microsoft').forEach(el => {
+      el.style.display = 'flex';
+    });
+  }
+
+  // Afficher le bouton Facebook si activé
+  if (authConfig.facebook_enabled) {
+    document.querySelectorAll('.btn-facebook').forEach(el => {
+      el.style.display = 'flex';
+    });
+  }
+
+  // Masquer le séparateur "ou" si aucun provider externe n'est activé
+  if (!authConfig.google_enabled && !authConfig.microsoft_enabled && !authConfig.facebook_enabled) {
+    document.querySelectorAll('.divider').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
+});
+
+// Vérifier la validité d'un token
+async function verifyToken(token) {
+  try {
+    const response = await fetch(`${API_URL}/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Changer d'onglet
+function switchAuthTab(tab) {
+  currentTab = tab;
+
+  // Mettre à jour les onglets
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab:nth-child(${tab === 'login' ? 1 : 2})`).classList.add('active');
+
+  // Mettre à jour les formulaires
+  document.querySelectorAll('.form-container').forEach(f => f.classList.remove('active'));
+  document.getElementById(`${tab}Form`).classList.add('active');
+
+  // Cacher les messages
+  hideMessages();
+}
+
+// Afficher un message d'erreur
+function showError(message) {
+  const errorEl = document.getElementById('errorMessage');
+  errorEl.textContent = message;
+  errorEl.classList.add('visible');
+
+  hideSuccess();
+}
+
+// Afficher un message de succès
+function showSuccess(message) {
+  const successEl = document.getElementById('successMessage');
+  successEl.textContent = message;
+  successEl.classList.add('visible');
+
+  hideError();
+}
+
+// Cacher les messages
+function hideMessages() {
+  hideError();
+  hideSuccess();
+}
+
+function hideError() {
+  document.getElementById('errorMessage').classList.remove('visible');
+}
+
+function hideSuccess() {
+  document.getElementById('successMessage').classList.remove('visible');
+}
+
+// Connexion
+async function handleLogin(event) {
+  event.preventDefault();
+  hideMessages();
+
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  const button = document.getElementById('loginButton');
+  const loading = document.getElementById('loginLoading');
+
+  button.disabled = true;
+  loading.classList.add('visible');
+
+  try {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // Sauvegarder le token
+      localStorage.setItem('authToken', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      showSuccess('Connexion réussie ! Redirection...');
+
+      // Rediriger vers l'application
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+    } else {
+      showError(data.detail || 'Erreur de connexion');
+      button.disabled = false;
+      loading.classList.remove('visible');
+    }
+  } catch (error) {
+    showError('Erreur de connexion au serveur');
+    button.disabled = false;
+    loading.classList.remove('visible');
+  }
+}
+
+// Inscription
+async function handleRegister(event) {
+  event.preventDefault();
+  hideMessages();
+
+  const name = document.getElementById('registerName').value;
+  const email = document.getElementById('registerEmail').value;
+  const password = document.getElementById('registerPassword').value;
+  const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+  const button = document.getElementById('registerButton');
+  const loading = document.getElementById('registerLoading');
+
+  // Vérifier que les mots de passe correspondent
+  if (password !== passwordConfirm) {
+    showError('Les mots de passe ne correspondent pas');
+    return;
+  }
+
+  button.disabled = true;
+  loading.classList.add('visible');
+
+  try {
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        full_name: name || null
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // Sauvegarder le token
+      localStorage.setItem('authToken', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      showSuccess('Compte créé avec succès ! Redirection...');
+
+      // Rediriger vers l'application
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+    } else {
+      showError(data.detail || 'Erreur lors de la création du compte');
+      button.disabled = false;
+      loading.classList.remove('visible');
+    }
+  } catch (error) {
+    showError('Erreur de connexion au serveur');
+    button.disabled = false;
+    loading.classList.remove('visible');
+  }
+}
+
+// Initialiser Google Sign-In
+function initGoogleSignIn() {
+  // Vérifier si la bibliothèque Google est chargée
+  if (typeof google === 'undefined') {
+    console.warn('Google Sign-In non disponible');
+    return;
+  }
+
+  if (!authConfig.google_client_id) {
+    console.warn('Google Client ID non configuré');
+    return;
+  }
+
+  // Initialiser Google Sign-In avec le client ID du serveur
+  google.accounts.id.initialize({
+    client_id: authConfig.google_client_id,
+    callback: handleGoogleSignIn,
+    auto_select: false
+  });
+
+  // Rendre le bouton dans les deux formulaires
+  google.accounts.id.renderButton(
+    document.getElementById('g_id_signin'),
+    {
+      theme: 'outline',
+      size: 'large',
+      width: '100%',
+      text: 'signin_with',
+      locale: 'fr'
+    }
+  );
+
+  google.accounts.id.renderButton(
+    document.getElementById('g_id_signin_register'),
+    {
+      theme: 'outline',
+      size: 'large',
+      width: '100%',
+      text: 'signup_with',
+      locale: 'fr'
+    }
+  );
+}
+
+// Gérer la connexion Google
+async function handleGoogleSignIn(response) {
+  hideMessages();
+
+  const loading = document.getElementById(`${currentTab}Loading`);
+  loading.classList.add('visible');
+
+  try {
+    const res = await fetch(`${API_URL}/auth/google`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        token: response.credential
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      // Sauvegarder le token
+      localStorage.setItem('authToken', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      showSuccess('Connexion réussie avec Google ! Redirection...');
+
+      // Rediriger vers l'application
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+    } else {
+      showError(data.detail || 'Erreur de connexion avec Google');
+      loading.classList.remove('visible');
+    }
+  } catch (error) {
+    showError('Erreur de connexion au serveur');
+    loading.classList.remove('visible');
+  }
+}
+
+// Connexion Microsoft
+function handleMicrosoftSignIn() {
+  window.location.href = `${API_URL}/auth/microsoft/login`;
+}
+
+// Connexion Facebook
+function handleFacebookSignIn() {
+  window.location.href = `${API_URL}/auth/facebook/login`;
+}
+</script>
+
+</body>
+</html>

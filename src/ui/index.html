@@ -1,0 +1,2609 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>AI Shell Copilot</title>
+<!-- Bibliothèque Markdown -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- XTerm.js -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+<style>
+body {
+  display:flex;
+  height:100vh;
+  margin:0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: #1e1e1e;
+}
+
+/* Panel IA */
+#ai {
+  width:40%;
+  display: flex;
+  flex-direction: column;
+  background: #252526;
+  color: #cccccc;
+}
+
+#ai h3 {
+  color: #ffffff;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Zone de messages */
+#chatMessages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Bulle de message */
+.message {
+  display: flex;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.assistant {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  word-wrap: break-word;
+}
+
+.message.user .message-bubble {
+  background: #0e7a0d;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.message.assistant .message-bubble {
+  background: #1e1e1e;
+  color: #cccccc;
+  border: 1px solid #404040;
+  border-bottom-left-radius: 4px;
+}
+
+.message-bubble p {
+  margin: 0;
+}
+
+.message-bubble pre {
+  background: #0d0d0d;
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.message-bubble code {
+  background: #0d0d0d;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+}
+
+.message-bubble .command-button {
+  margin: 0;
+  width: 100%;
+}
+
+.message-bubble ul,
+.message-bubble ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+/* Zone de saisie */
+#chatInput {
+  padding: 16px 20px;
+  border-top: 1px solid #404040;
+  background: #1e1e1e;
+}
+
+#chatInput textarea {
+  width: calc(100% - 20px);
+  min-height: 60px;
+  max-height: 150px;
+}
+
+/* Diviseur vertical */
+#resizer {
+  width: 5px;
+  background: #404040;
+  cursor: col-resize;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+#resizer:hover {
+  background: #007acc;
+}
+
+#resizer:active {
+  background: #0e639c;
+}
+
+/* Panel Terminal */
+#term {
+  flex: 1;
+  height: 100vh;
+  padding:0;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+}
+
+#term h3 {
+  color: #ffffff;
+  margin: 15px 20px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Barre d'onglets */
+#tabs-bar {
+  display: flex;
+  background: #252526;
+  border-bottom: 1px solid #404040;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: #2d2d30;
+  border-right: 1px solid #404040;
+  cursor: pointer;
+  color: #969696;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background 0.2s;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.tab:hover {
+  background: #37373d;
+}
+
+.tab.active {
+  background: #1e1e1e;
+  color: #ffffff;
+  border-bottom: 2px solid #007acc;
+}
+
+.tab-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
+}
+
+.tab-close {
+  color: #969696;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+  margin-left: 4px;
+  border-radius: 3px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.tab-close:hover {
+  background: #505050;
+  color: #ffffff;
+}
+
+#terminal-wrapper {
+  position: relative;
+  flex-grow: 1;
+  overflow: hidden;
+  min-height: 400px;
+  background: #0d0d0d; /* Pour debug : voir si le wrapper existe */
+}
+
+#terminal-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px;
+  overflow: hidden;
+}
+
+/* Textarea IA */
+textarea {
+  width: calc(100% - 20px);
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #cccccc;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+/* Boutons */
+button {
+  display:block;
+  margin:10px 0;
+  padding: 10px 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s, transform 0.1s;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:disabled {
+  background: #4a4a4a !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Bouton d'envoi */
+#sendBtn {
+  width: 100%;
+  background: #0e639c;
+  color: white;
+}
+#sendBtn:hover:not(:disabled) {
+  background: #1177bb;
+}
+
+/* Indicateur de chargement */
+.loading {
+  display: none;
+  margin: 10px 0;
+  padding: 12px;
+  background: #264f78;
+  border-left: 4px solid #007acc;
+  border-radius: 4px;
+  font-style: italic;
+  color: #9cdcfe;
+}
+.loading.active {
+  display: block;
+}
+.loading::after {
+  content: '...';
+  animation: dots 1.5s steps(4, end) infinite;
+}
+@keyframes dots {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60%, 100% { content: '...'; }
+}
+
+/* Styles pour le Markdown */
+#aiResponse {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #cccccc;
+}
+#aiResponse h1, #aiResponse h2, #aiResponse h3 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  color: #ffffff;
+}
+#aiResponse h1 {
+  font-size: 1.8em;
+  border-bottom: 2px solid #404040;
+  padding-bottom: 0.3em;
+}
+#aiResponse h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #404040;
+  padding-bottom: 0.3em;
+}
+#aiResponse h3 {
+  font-size: 1.25em;
+}
+#aiResponse h4 {
+  font-size: 1.1em;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+#aiResponse p {
+  margin: 0.8em 0;
+  line-height: 1.7;
+}
+#aiResponse code {
+  background: #1e1e1e;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 85%;
+  border: 1px solid #3c3c3c;
+  color: #ce9178;
+}
+#aiResponse pre {
+  background: #1e1e1e;
+  padding: 16px;
+  border-radius: 6px;
+  overflow: auto;
+  border: 1px solid #3c3c3c;
+  line-height: 1.45;
+}
+#aiResponse pre code {
+  background: none;
+  padding: 0;
+  border: none;
+  font-size: 100%;
+  color: #d4d4d4;
+}
+#aiResponse ul, #aiResponse ol {
+  margin: 0.8em 0;
+  padding-left: 2em;
+}
+#aiResponse li {
+  margin: 0.25em 0;
+}
+#aiResponse blockquote {
+  border-left: 4px solid #515151;
+  padding-left: 1em;
+  padding-right: 1em;
+  color: #858585;
+  margin: 1em 0;
+  font-style: italic;
+}
+#aiResponse a {
+  color: #4daafc;
+  text-decoration: none;
+}
+#aiResponse a:hover {
+  text-decoration: underline;
+}
+#aiResponse strong {
+  font-weight: 600;
+  color: #ffffff;
+}
+#aiResponse em {
+  font-style: italic;
+}
+#aiResponse table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+#aiResponse table th,
+#aiResponse table td {
+  border: 1px solid #3c3c3c;
+  padding: 6px 13px;
+}
+#aiResponse table th {
+  background: #1e1e1e;
+  font-weight: 600;
+}
+#aiResponse table tr:nth-child(2n) {
+  background: #252526;
+}
+#aiResponse hr {
+  border: none;
+  border-top: 2px solid #404040;
+  margin: 1.5em 0;
+}
+
+/* Styles pour les boutons de commande */
+.command-button {
+  display: block;
+  margin: 8px 0;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 14px;
+  text-align: left;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.command-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+.command-button:active {
+  transform: translateY(0);
+}
+
+.risk-low { background: #0e7a0d; color: white; }
+.risk-low:hover { background: #107c10; }
+.risk-medium { background: #ca5010; color: white; }
+.risk-medium:hover { background: #d3590f; }
+.risk-high { background: #c50f1f; color: white; animation: blink 1s infinite; }
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  25%, 75% { opacity: 0.6; }
+}
+
+.command-desc {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+/* XTerm custom styles */
+.xterm {
+  padding: 10px;
+}
+
+.xterm-viewport {
+  overflow-y: auto;
+}
+
+/* Header avec bouton environnements */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: #252526;
+  border-bottom: 1px solid #404040;
+}
+
+.env-button {
+  padding: 8px 16px;
+  background: #0e639c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.env-button:hover {
+  background: #1177bb;
+}
+
+/* Sidebar environnements */
+.env-sidebar {
+  position: fixed;
+  right: -400px;
+  top: 0;
+  width: 400px;
+  height: 100vh;
+  background: #252526;
+  border-left: 2px solid #404040;
+  transition: right 0.3s;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.env-sidebar.open {
+  right: 0;
+}
+
+.env-sidebar-header {
+  padding: 20px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #404040;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.env-sidebar-header h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #cccccc;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+}
+
+.close-btn:hover {
+  color: #ffffff;
+}
+
+/* Onglets de la sidebar */
+.sidebar-tabs {
+  display: flex;
+  background: #1e1e1e;
+  border-bottom: 1px solid #404040;
+}
+
+.sidebar-tab {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #858585;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0;
+}
+
+.sidebar-tab:hover {
+  background: #252526;
+  color: #cccccc;
+  transform: none;
+}
+
+.sidebar-tab.active {
+  color: #ffffff;
+  border-bottom-color: #0e639c;
+  background: #252526;
+}
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.env-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.env-list {
+  margin-bottom: 20px;
+}
+
+.env-item {
+  background: #1e1e1e;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+
+.env-item:hover {
+  border-color: #007acc;
+}
+
+.env-item.active {
+  border-color: #0e7a0d;
+  border-width: 2px;
+}
+
+.env-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.env-item-name {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.env-item-badge {
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-active {
+  background: #0e7a0d;
+  color: white;
+}
+
+.badge-local {
+  background: #0e639c;
+  color: white;
+}
+
+.badge-remote {
+  background: #ca5010;
+  color: white;
+}
+
+.env-item-desc {
+  color: #858585;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.env-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.env-item-actions button {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 12px;
+  margin: 0;
+}
+
+.btn-load {
+  background: #0e7a0d;
+}
+
+.btn-load:hover:not(:disabled) {
+  background: #107c10;
+}
+
+.btn-edit {
+  background: #0e639c;
+}
+
+.btn-edit:hover:not(:disabled) {
+  background: #1177bb;
+}
+
+.btn-delete {
+  background: #c50f1f;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: #e81123;
+}
+
+.btn-create {
+  width: 100%;
+  background: #0e639c;
+  color: white;
+  padding: 12px;
+}
+
+.btn-create:hover {
+  background: #1177bb;
+}
+
+/* Formulaire environnement */
+.env-form {
+  background: #1e1e1e;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.env-form h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 4px;
+  color: #cccccc;
+  font-size: 12px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  background: #252526;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  color: #cccccc;
+  font-size: 13px;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.form-actions button {
+  flex: 1;
+}
+
+/* Modales personnalisées */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-box {
+  background: #2d2d30;
+  border: 1px solid #007acc;
+  border-radius: 6px;
+  padding: 24px;
+  min-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.modal-header {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.modal-body {
+  color: #cccccc;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #1e1e1e;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  color: #cccccc;
+  font-size: 14px;
+  font-family: 'Consolas', monospace;
+  margin-bottom: 16px;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.modal-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-btn-primary {
+  background: #007acc;
+  color: #ffffff;
+}
+
+.modal-btn-primary:hover {
+  background: #005a9e;
+}
+
+.modal-btn-secondary {
+  background: #3c3c3c;
+  color: #cccccc;
+}
+
+.modal-btn-secondary:hover {
+  background: #4c4c4c;
+}
+</style>
+</head>
+<body>
+
+<div id="ai">
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #404040; background: #1e1e1e;">
+    <h3 style="margin: 0; font-size: 18px; color: #ffffff;">🤖 IA Copilot</h3>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span id="userDisplayName" style="color: #858585; font-size: 13px;"></span>
+      <button onclick="logout()" style="background: #5a1d1d; color: #f48fb1; border: 1px solid #c50f1f; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer;" title="Se déconnecter">Déconnexion</button>
+    </div>
+  </div>
+
+  <!-- Zone de messages -->
+  <div id="chatMessages">
+    <div class="message assistant">
+      <div class="message-bubble">
+        <p>👋 Bonjour ! Je suis votre assistant IA pour vous aider avec vos commandes shell et résoudre vos problèmes techniques. Comment puis-je vous aider aujourd'hui ?</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zone de saisie -->
+  <div id="chatInput">
+    <textarea id="userMsg" rows="2" placeholder="Posez votre question... (Ctrl+Entrée pour envoyer)"></textarea>
+    <button id="sendBtn" onclick="askAI()">📤 Envoyer (Ctrl+↵)</button>
+    <div class="loading" id="loadingIndicator">L'IA réfléchit...</div>
+  </div>
+</div>
+
+<div id="resizer"></div>
+
+<div id="term">
+  <div class="header">
+    <h3 style="margin: 0;">💻 Terminal</h3>
+    <button class="env-button" onclick="toggleEnvSidebar()">⚙️ Configuration</button>
+  </div>
+  <!-- Barre d'onglets -->
+  <div id="tabs-bar"></div>
+  <!-- Conteneur des terminaux -->
+  <div id="terminal-wrapper"></div>
+</div>
+
+<!-- Sidebar de configuration -->
+<div id="envSidebar" class="env-sidebar">
+  <div class="env-sidebar-header">
+    <h2>⚙️ Configuration</h2>
+    <button class="close-btn" onclick="toggleEnvSidebar()">&times;</button>
+  </div>
+
+  <!-- Onglets -->
+  <div class="sidebar-tabs">
+    <button class="sidebar-tab active" onclick="switchSidebarTab('apis')">🔑 APIs IA</button>
+    <button class="sidebar-tab" onclick="switchSidebarTab('environments')">🌍 Environnements</button>
+  </div>
+
+  <!-- Contenu APIs -->
+  <div id="apisTab" class="tab-content">
+    <button class="btn-create" onclick="showCreateAPIForm()">+ Nouvelle API</button>
+
+    <div id="apiFormContainer" style="display: none;"></div>
+
+    <div class="env-list" id="apiList">
+      <p style="color: #858585; text-align: center;">Chargement...</p>
+    </div>
+  </div>
+
+  <!-- Contenu Environnements -->
+  <div id="environmentsTab" class="tab-content" style="display: none;">
+    <button class="btn-create" onclick="showCreateForm()">+ Nouvel Environnement</button>
+
+    <div id="envFormContainer" style="display: none;"></div>
+
+    <div class="env-list" id="envList">
+      <p style="color: #858585; text-align: center;">Chargement...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// AUTHENTIFICATION
+// ============================================================================
+
+// Vérifier la connexion au chargement
+(function checkAuth() {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    window.location.href = '/login';
+    return;
+  }
+  // Afficher le nom de l'utilisateur
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const displayEl = document.getElementById('userDisplayName');
+    if (displayEl) {
+      displayEl.textContent = user.full_name || user.email || '';
+    }
+  } catch (e) {}
+})();
+
+function getAuthHeaders() {
+  const token = localStorage.getItem('authToken');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  };
+}
+
+function logout() {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('user');
+  window.location.href = '/login';
+}
+
+// Wrapper fetch qui gère les 401
+async function authFetch(url, options = {}) {
+  if (!options.headers) {
+    options.headers = getAuthHeaders();
+  } else {
+    const token = localStorage.getItem('authToken');
+    options.headers['Authorization'] = `Bearer ${token}`;
+  }
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    logout();
+    throw new Error('Session expirée');
+  }
+  return res;
+}
+
+// ============================================================================
+// SYSTÈME D'ONGLETS POUR TERMINAUX MULTIPLES
+// ============================================================================
+
+// Stockage de tous les onglets
+const tabs = {};
+let activeTabId = null;
+let tabCounter = 0;
+
+// Configuration commune des terminaux
+const terminalConfig = {
+  cursorBlink: true,
+  cursorStyle: 'bar',
+  fontSize: 14,
+  fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+  theme: {
+    background: '#1e1e1e',
+    foreground: '#cccccc',
+    cursor: '#ffffff',
+    cursorAccent: '#000000',
+    selection: '#264f78',
+    black: '#000000',
+    red: '#cd3131',
+    green: '#0dbc79',
+    yellow: '#e5e510',
+    blue: '#2472c8',
+    magenta: '#bc3fbc',
+    cyan: '#11a8cd',
+    white: '#e5e5e5',
+    brightBlack: '#666666',
+    brightRed: '#f14c4c',
+    brightGreen: '#23d18b',
+    brightYellow: '#f5f543',
+    brightBlue: '#3b8eea',
+    brightMagenta: '#d670d6',
+    brightCyan: '#29b8db',
+    brightWhite: '#e5e5e5'
+  },
+  scrollback: 1000
+};
+
+// Ajuster la taille des terminaux quand la fenêtre change
+window.addEventListener('resize', () => {
+  if (activeTabId && tabs[activeTabId]) {
+    tabs[activeTabId].fitAddon.fit();
+  }
+});
+
+// ============================================================================
+// GESTION DU REDIMENSIONNEMENT DES PANNEAUX
+// ============================================================================
+
+// Initialiser le redimensionnement
+(function initResizer() {
+  const resizer = document.getElementById('resizer');
+  const leftPanel = document.getElementById('ai');
+  const rightPanel = document.getElementById('term');
+
+  let isResizing = false;
+  let startX = 0;
+  let startLeftWidth = 0;
+
+  // Charger la largeur sauvegardée ou utiliser 40% par défaut
+  const savedWidth = localStorage.getItem('aiPanelWidth');
+  if (savedWidth) {
+    leftPanel.style.width = savedWidth;
+  }
+
+  resizer.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    startX = e.clientX;
+    startLeftWidth = leftPanel.offsetWidth;
+
+    // Ajouter une classe pour désactiver la sélection de texte pendant le drag
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+
+    const deltaX = e.clientX - startX;
+    const newLeftWidth = startLeftWidth + deltaX;
+    const totalWidth = document.body.clientWidth;
+
+    // Limiter la largeur entre 20% et 80%
+    const minWidth = totalWidth * 0.2;
+    const maxWidth = totalWidth * 0.8;
+
+    if (newLeftWidth >= minWidth && newLeftWidth <= maxWidth) {
+      const widthPercent = (newLeftWidth / totalWidth) * 100;
+      leftPanel.style.width = widthPercent + '%';
+
+      // Redimensionner le terminal actif
+      if (activeTabId && tabs[activeTabId]) {
+        requestAnimationFrame(() => {
+          tabs[activeTabId].fitAddon.fit();
+        });
+      }
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+
+      // Sauvegarder la largeur
+      localStorage.setItem('aiPanelWidth', leftPanel.style.width);
+    }
+  });
+})();
+
+// ============================================================================
+// FONCTIONS DE GESTION DES ONGLETS
+// ============================================================================
+
+/**
+ * Crée un nouvel onglet de terminal
+ * @param {string} envName - Nom de l'environnement (affich é dans l'onglet)
+ * @param {string} envData - Données de l'environnement (optionnel)
+ * @returns {string} L'ID du nouvel onglet créé
+ */
+function createTab(envName, envData = null) {
+  const tabId = `tab-${++tabCounter}`;
+
+  // Créer le conteneur pour ce terminal
+  const terminalContainer = document.createElement('div');
+  terminalContainer.id = `terminal-${tabId}`;
+  terminalContainer.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 10px; display: none;';
+  document.getElementById('terminal-wrapper').appendChild(terminalContainer);
+
+  // Créer l'instance du terminal
+  const term = new Terminal(terminalConfig);
+  const fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+  term.open(terminalContainer);
+  fitAddon.fit();
+
+  // Stocker l'onglet avec toutes ses données
+  tabs[tabId] = {
+    id: tabId,
+    name: envName,
+    envData: envData,
+    term: term,
+    fitAddon: fitAddon,
+    container: terminalContainer,
+    // Variables d'état du terminal
+    currentLine: '',
+    cursorPosition: 0,
+    commandHistory: [],
+    historyIndex: -1,
+    currentDir: '~',
+    prompt: '\x1b[32m~ $\x1b[0m ',
+    // Chat IA dédié à cet onglet
+    chatMessages: []  // Historique des messages du chat pour cet onglet
+  };
+
+  // Créer l'onglet dans la barre
+  const tabsBar = document.getElementById('tabs-bar');
+  const tabElement = document.createElement('div');
+  tabElement.className = 'tab';
+  tabElement.id = `tab-btn-${tabId}`;
+  tabElement.innerHTML = `
+    <span class="tab-label" title="${envName}">${envName}</span>
+    <span class="tab-close" onclick="event.stopPropagation(); closeTab('${tabId}')">&times;</span>
+  `;
+  tabElement.onclick = () => switchTab(tabId);
+  tabsBar.appendChild(tabElement);
+
+  // Afficher le message de bienvenue
+  term.writeln('\x1b[36m╔══════════════════════════════════════════════════════════════╗\x1b[0m');
+  term.writeln('\x1b[36m║  Bienvenue dans ShellIA Terminal                             ║\x1b[0m');
+  term.writeln(`\x1b[36m║  Environnement: ${envName.padEnd(45)}║\x1b[0m`);
+  term.writeln('\x1b[36m╚══════════════════════════════════════════════════════════════╝\x1b[0m');
+  term.writeln('');
+
+  // Initialiser le répertoire courant
+  updateCurrentDirectory(tabId).then(() => {
+    if (tabs[tabId]) {
+      tabs[tabId].term.write(tabs[tabId].prompt);
+    }
+  });
+
+  // Configurer les événements du terminal
+  setupTerminalEvents(tabId);
+
+  // Activer cet onglet
+  switchTab(tabId);
+
+  return tabId;
+}
+
+/**
+ * Configure tous les événements pour un terminal donné
+ * @param {string} tabId - L'ID de l'onglet
+ */
+function setupTerminalEvents(tabId) {
+  const tab = tabs[tabId];
+  const term = tab.term;
+  const container = tab.container;
+
+  // Gestionnaire pour le collage
+  container.addEventListener('paste', (event) => {
+    if (activeTabId !== tabId) return;
+    event.preventDefault();
+
+    let pastedText = (event.clipboardData || window.clipboardData).getData('text');
+    if (pastedText) {
+      pastedText = pastedText.replace(/[\r\n]+/g, ' ').replace(/[\x00-\x1F\x7F]/g, '');
+      tab.currentLine = tab.currentLine.slice(0, tab.cursorPosition) + pastedText + tab.currentLine.slice(tab.cursorPosition);
+      tab.cursorPosition += pastedText.length;
+      redrawLine();
+    }
+  });
+
+  // Gestion des entrées clavier
+  term.onData(data => {
+    if (activeTabId !== tabId) return;
+
+    const code = data.charCodeAt(0);
+
+    // Enter
+    if (code === 13) {
+      term.write('\r\n');
+      if (tab.currentLine.trim()) {
+        executeCommand(tab.currentLine, tabId);
+        tab.commandHistory.push(tab.currentLine);
+        tab.historyIndex = tab.commandHistory.length;
+      } else {
+        term.write(tab.prompt);
+      }
+      tab.currentLine = '';
+      tab.cursorPosition = 0;
+    }
+    // Backspace
+    else if (code === 127) {
+      if (tab.cursorPosition > 0) {
+        tab.currentLine = tab.currentLine.slice(0, tab.cursorPosition - 1) + tab.currentLine.slice(tab.cursorPosition);
+        tab.cursorPosition--;
+        redrawLine();
+      }
+    }
+    // Delete
+    else if (data === '\x1b[3~') {
+      if (tab.cursorPosition < tab.currentLine.length) {
+        tab.currentLine = tab.currentLine.slice(0, tab.cursorPosition) + tab.currentLine.slice(tab.cursorPosition + 1);
+        redrawLine();
+      }
+    }
+    // Arrow Left
+    else if (data === '\x1b[D') {
+      if (tab.cursorPosition > 0) {
+        tab.cursorPosition--;
+        term.write('\x1b[D');
+      }
+    }
+    // Arrow Right
+    else if (data === '\x1b[C') {
+      if (tab.cursorPosition < tab.currentLine.length) {
+        tab.cursorPosition++;
+        term.write('\x1b[C');
+      }
+    }
+    // Arrow Up
+    else if (data === '\x1b[A') {
+      if (tab.historyIndex > 0) {
+        tab.historyIndex--;
+        tab.currentLine = tab.commandHistory[tab.historyIndex];
+        tab.cursorPosition = tab.currentLine.length;
+        redrawLine();
+      }
+    }
+    // Arrow Down
+    else if (data === '\x1b[B') {
+      if (tab.historyIndex < tab.commandHistory.length - 1) {
+        tab.historyIndex++;
+        tab.currentLine = tab.commandHistory[tab.historyIndex];
+        tab.cursorPosition = tab.currentLine.length;
+        redrawLine();
+      } else if (tab.historyIndex === tab.commandHistory.length - 1) {
+        tab.historyIndex = tab.commandHistory.length;
+        tab.currentLine = '';
+        tab.cursorPosition = 0;
+        redrawLine();
+      }
+    }
+    // Home
+    else if (data === '\x1b[H' || data === '\x1b[1~') {
+      tab.cursorPosition = 0;
+      redrawLine();
+    }
+    // End
+    else if (data === '\x1b[F' || data === '\x1b[4~') {
+      tab.cursorPosition = tab.currentLine.length;
+      redrawLine();
+    }
+    // Ctrl+C
+    else if (code === 3) {
+      const selection = term.getSelection();
+      if (selection && selection.trim().length > 0) {
+        navigator.clipboard.writeText(selection).catch(err => {
+          console.error('Erreur lors de la copie:', err);
+        });
+        term.clearSelection();
+      } else {
+        term.write('^C\r\n' + tab.prompt);
+        tab.currentLine = '';
+        tab.cursorPosition = 0;
+      }
+    }
+    // Ctrl+L
+    else if (code === 12) {
+      term.clear();
+      term.write(tab.prompt);
+      redrawLine();
+    }
+    // Ctrl+A
+    else if (code === 1) {
+      tab.cursorPosition = 0;
+      redrawLine();
+    }
+    // Ctrl+E
+    else if (code === 5) {
+      tab.cursorPosition = tab.currentLine.length;
+      redrawLine();
+    }
+    // Ctrl+U
+    else if (code === 21) {
+      tab.currentLine = tab.currentLine.slice(tab.cursorPosition);
+      tab.cursorPosition = 0;
+      redrawLine();
+    }
+    // Ctrl+K
+    else if (code === 11) {
+      tab.currentLine = tab.currentLine.slice(0, tab.cursorPosition);
+      redrawLine();
+    }
+    // Caractères normaux
+    else if (code >= 32 && code < 127) {
+      const wasAtEnd = (tab.cursorPosition === tab.currentLine.length);
+      tab.currentLine = tab.currentLine.slice(0, tab.cursorPosition) + data + tab.currentLine.slice(tab.cursorPosition);
+      tab.cursorPosition++;
+
+      if (wasAtEnd) {
+        term.write('\x1b[36m' + data + '\x1b[0m');
+      } else {
+        redrawLine();
+      }
+    }
+  });
+}
+
+/**
+ * Change d'onglet actif
+ * @param {string} tabId - L'ID de l'onglet à activer
+ */
+function switchTab(tabId) {
+  if (!tabs[tabId]) return;
+
+  // Désactiver l'ancien onglet
+  if (activeTabId && tabs[activeTabId]) {
+    tabs[activeTabId].container.style.display = 'none';
+    document.getElementById(`tab-btn-${activeTabId}`)?.classList.remove('active');
+  }
+
+  // Activer le nouvel onglet
+  activeTabId = tabId;
+  tabs[tabId].container.style.display = 'block';
+  document.getElementById(`tab-btn-${tabId}`)?.classList.add('active');
+
+  // Recharger l'historique du chat pour cet onglet
+  reloadChatMessages(tabId);
+
+  // Attendre que le navigateur mette à jour le DOM avant d'ajuster la taille
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (tabs[tabId]) {
+        tabs[tabId].fitAddon.fit();
+        tabs[tabId].term.focus();
+      }
+    });
+  });
+}
+
+/**
+ * Recharge l'historique des messages du chat pour un onglet
+ * @param {string} tabId - L'ID de l'onglet
+ */
+function reloadChatMessages(tabId) {
+  if (!tabs[tabId]) return;
+
+  const chatMessages = document.getElementById("chatMessages");
+
+  // Vider le chat actuel
+  chatMessages.innerHTML = '';
+
+  // Recharger les messages de cet onglet
+  tabs[tabId].chatMessages.forEach(messageData => {
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${messageData.role}`;
+
+    const bubbleDiv = document.createElement("div");
+    bubbleDiv.className = "message-bubble";
+    bubbleDiv.innerHTML = messageData.content;
+
+    messageDiv.appendChild(bubbleDiv);
+    chatMessages.appendChild(messageDiv);
+  });
+
+  // Scroll vers le bas
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+/**
+ * Ferme un onglet
+ * @param {string} tabId - L'ID de l'onglet à fermer
+ */
+async function closeTab(tabId) {
+  if (!tabs[tabId]) return;
+
+  // Confirmer la fermeture
+  const confirmed = await showConfirm(`Voulez-vous vraiment fermer l'onglet "${tabs[tabId].name}" ?`);
+  if (!confirmed) {
+    return;
+  }
+
+  // Nettoyer le terminal
+  tabs[tabId].term.dispose();
+  tabs[tabId].container.remove();
+  document.getElementById(`tab-btn-${tabId}`)?.remove();
+
+  // Supprimer de la liste
+  delete tabs[tabId];
+
+  // Si c'était l'onglet actif, activer un autre onglet
+  if (activeTabId === tabId) {
+    const remaining = Object.keys(tabs);
+    if (remaining.length > 0) {
+      switchTab(remaining[0]);
+    } else {
+      activeTabId = null;
+    }
+  }
+}
+
+// Fonction pour redessiner la ligne courante
+function redrawLine() {
+  if (!activeTabId || !tabs[activeTabId]) return;
+
+  const tab = tabs[activeTabId];
+  const term = tab.term;
+  const currentLine = tab.currentLine;
+  const cursorPosition = tab.cursorPosition;
+  const prompt = tab.prompt;
+
+  // Effacer la ligne complète
+  term.write('\r' + prompt);
+  term.write('\x1b[K'); // Clear from cursor to end of line (ANSI escape)
+
+  // Afficher la ligne en cyan
+  term.write('\x1b[36m' + currentLine + '\x1b[0m');
+
+  // Repositionner le curseur
+  const offset = currentLine.length - cursorPosition;
+  if (offset > 0) {
+    term.write('\x1b[' + offset + 'D'); // Move cursor left
+  }
+}
+
+// Fonction pour mettre à jour le répertoire courant
+async function updateCurrentDirectory(tabId) {
+  if (!tabId || !tabs[tabId]) return;
+
+  try {
+    // Déterminer la commande à utiliser selon le mode d'exécution
+    const executionMode = tabs[tabId].envData?.EXECUTION_MODE || 'local';
+    // Sur Windows local, utiliser 'cd' au lieu de 'pwd'
+    const command = (executionMode === 'local' && navigator.platform.includes('Win')) ? 'cd' : 'pwd';
+
+    const res = await authFetch("/execute", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({command: command})
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.stdout) {
+        tabs[tabId].currentDir = data.stdout.trim();
+        tabs[tabId].prompt = '\x1b[32m' + tabs[tabId].currentDir + ' $\x1b[0m ';
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors de la récupération du répertoire:', error);
+  }
+}
+
+// Fonction pour exécuter une commande
+async function executeCommand(cmd, tabId) {
+  if (!tabId || !tabs[tabId]) return;
+
+  const tab = tabs[tabId];
+  const term = tab.term;
+  const executionMode = tab.envData?.EXECUTION_MODE || 'local';
+
+  try {
+    // Détecter les commandes cd
+    const cdMatch = cmd.trim().match(/^cd\s+(.+)$/);
+
+    if (cdMatch) {
+      // Commande cd détectée
+      let targetDir = cdMatch[1].trim();
+
+      // Gérer les cas spéciaux
+      if (targetDir === '~' || targetDir === '') {
+        targetDir = '~';
+      } else if (!targetDir.startsWith('/') && !targetDir.startsWith('~')) {
+        // Chemin relatif : combiner avec le répertoire courant
+        if (tab.currentDir === '~') {
+          targetDir = `~/${targetDir}`;
+        } else {
+          targetDir = `${tab.currentDir}/${targetDir}`;
+        }
+      }
+
+      // Pour SSH, vérifier que le répertoire existe avant de changer
+      const testCmd = `cd ${targetDir} && pwd`;
+      const res = await authFetch("/execute", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({command: testCmd})
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.stdout) {
+        // Le répertoire existe, mettre à jour
+        tab.currentDir = data.stdout.trim();
+        tab.prompt = '\x1b[32m' + tab.currentDir + ' $\x1b[0m ';
+      } else {
+        // Erreur, afficher le message
+        if (data.stderr) {
+          term.write('\x1b[31m' + data.stderr.replace(/\n/g, '\r\n') + '\x1b[0m');
+        }
+      }
+
+      return;
+    }
+
+    // Pour les autres commandes en mode remote, préfixer avec cd pour maintenir le contexte
+    let actualCommand = cmd;
+    if (executionMode === 'remote' && tab.currentDir && tab.currentDir !== '~') {
+      actualCommand = `cd ${tab.currentDir} && ${cmd}`;
+    } else if (executionMode === 'remote' && tab.currentDir === '~') {
+      actualCommand = `cd ~ && ${cmd}`;
+    }
+
+    const res = await authFetch("/execute", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({command: actualCommand})
+    });
+
+    if (!res.ok) {
+      throw new Error(`Erreur HTTP: ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    // Afficher stdout
+    if (data.stdout) {
+      term.write(data.stdout.replace(/\n/g, '\r\n'));
+    }
+
+    // Afficher stderr en rouge
+    if (data.stderr) {
+      term.write('\x1b[31m' + data.stderr.replace(/\n/g, '\r\n') + '\x1b[0m');
+
+      // Envoyer automatiquement l'erreur à l'IA
+      const errorMessage = `Le retour est : ${data.stderr}`;
+      askAI(errorMessage);
+    }
+
+    // Afficher le code de retour
+    if (data.return_code !== undefined && data.return_code !== 0) {
+      term.writeln(`\x1b[31m[Exit code: ${data.return_code}]\x1b[0m`);
+    }
+
+    // Mettre à jour le répertoire courant après chaque commande (sauf pour cd qui est déjà géré)
+    await updateCurrentDirectory(tabId);
+
+  } catch (error) {
+    term.writeln(`\x1b[31m[❌ Erreur: ${error.message}]\x1b[0m`);
+  } finally {
+    term.write(tab.prompt);
+  }
+}
+
+// Fonction pour insérer une commande dans le terminal (depuis l'IA)
+function copyToTerminal(cmd) {
+  if (!activeTabId || !tabs[activeTabId]) {
+    alert("Aucun terminal actif pour exécuter la commande");
+    return;
+  }
+
+  const tab = tabs[activeTabId];
+
+  // Insérer la nouvelle commande dans l'onglet actif
+  tab.currentLine = cmd;
+  tab.cursorPosition = cmd.length;
+
+  // Redessiner la ligne dans le terminal actif
+  const term = tab.term;
+  term.write('\r\x1b[K' + tab.prompt);
+  term.write('\x1b[36m' + tab.currentLine + '\x1b[0m');
+
+  // Effet visuel
+  setTimeout(() => {
+    term.write('\x1b[7m \x1b[0m'); // Inverse video pour highlight
+    setTimeout(() => {
+      term.write('\b \b');
+    }, 200);
+  }, 100);
+}
+
+// ============================================================================
+// Partie IA (inchangée)
+// ============================================================================
+
+function extractJsonBlocks(markdown) {
+  const jsonBlocks = [];
+  const regex = /```json\s*([\s\S]*?)```/g;
+  let match;
+
+  while ((match = regex.exec(markdown)) !== null) {
+    try {
+      const jsonContent = match[1].trim();
+      const parsed = JSON.parse(jsonContent);
+      jsonBlocks.push(parsed);
+    } catch (e) {
+      console.error("Erreur parsing JSON block:", e);
+    }
+  }
+
+  return jsonBlocks;
+}
+
+function removeJsonBlocks(markdown) {
+  return markdown.replace(/```json\s*[\s\S]*?```/g, '');
+}
+
+async function askAI(customMessage = null) {
+  const msg = customMessage || document.getElementById("userMsg").value.trim();
+
+  if (!msg) {
+    alert("Veuillez saisir un message");
+    return;
+  }
+
+  const loadingIndicator = document.getElementById("loadingIndicator");
+  const sendBtn = document.getElementById("sendBtn");
+  const chatMessages = document.getElementById("chatMessages");
+
+  // Ajouter le message de l'utilisateur
+  addChatMessage(msg, 'user');
+
+  // Vider la zone de saisie (seulement si pas de message personnalisé)
+  if (!customMessage) {
+    document.getElementById("userMsg").value = "";
+  }
+
+  loadingIndicator.classList.add("active");
+  sendBtn.disabled = true;
+
+  try {
+    const res = await authFetch("/ai/suggest", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({message: msg})
+    });
+
+    if (!res.ok) {
+      throw new Error(`Erreur HTTP: ${res.status}`);
+    }
+
+    const responseData = await res.json();
+    let markdownContent = "";
+
+    if (typeof responseData === 'string') {
+      markdownContent = responseData;
+    } else if (responseData.markdown) {
+      markdownContent = responseData.markdown;
+    } else {
+      markdownContent = responseData.explanation || "";
+    }
+
+    const jsonBlocks = extractJsonBlocks(markdownContent);
+    const cleanMarkdown = removeJsonBlocks(markdownContent);
+
+    // Créer la bulle de message de l'IA
+    const assistantBubble = addChatMessage('', 'assistant');
+    assistantBubble.innerHTML = marked.parse(cleanMarkdown);
+
+    // Ajouter les boutons de commandes
+    jsonBlocks.forEach(block => {
+      if (block.commands && Array.isArray(block.commands)) {
+        block.commands.forEach(cmd => {
+          const btnContainer = document.createElement("div");
+          btnContainer.style.marginTop = "8px";
+
+          const b = document.createElement("button");
+          b.className = `command-button risk-${cmd.risk}`;
+          b.innerHTML = `▶ ${cmd.cmd}`;
+
+          if (cmd.description) {
+            const desc = document.createElement("div");
+            desc.className = "command-desc";
+            desc.textContent = cmd.description;
+            b.appendChild(desc);
+          }
+
+          b.onclick = () => copyToTerminal(cmd.cmd);
+          btnContainer.appendChild(b);
+          assistantBubble.appendChild(btnContainer);
+        });
+      }
+    });
+
+    if (responseData.commands && Array.isArray(responseData.commands)) {
+      responseData.commands.forEach(cmd => {
+        const btnContainer = document.createElement("div");
+        btnContainer.style.marginTop = "8px";
+
+        const b = document.createElement("button");
+        b.className = `command-button risk-${cmd.risk}`;
+        b.innerHTML = `▶ ${cmd.cmd}`;
+
+        if (cmd.description) {
+          const desc = document.createElement("div");
+          desc.className = "command-desc";
+          desc.textContent = cmd.description;
+          b.appendChild(desc);
+        }
+
+        b.onclick = () => copyToTerminal(cmd.cmd);
+        btnContainer.appendChild(b);
+        assistantBubble.appendChild(btnContainer);
+      });
+    }
+
+    // Mettre à jour le contenu stocké dans l'historique de l'onglet avec le HTML final
+    if (activeTabId && tabs[activeTabId] && tabs[activeTabId].chatMessages.length > 0) {
+      const lastMessage = tabs[activeTabId].chatMessages[tabs[activeTabId].chatMessages.length - 1];
+      if (lastMessage.role === 'assistant') {
+        lastMessage.content = assistantBubble.innerHTML;
+      }
+    }
+
+  } catch (error) {
+    const errorBubble = addChatMessage('', 'assistant');
+    errorBubble.innerHTML = `<div style="color: #f14c4c; padding: 10px; background: #3b1f1f; border-left: 4px solid #c50f1f; border-radius: 4px;">
+      <strong>❌ Erreur:</strong> ${error.message}
+    </div>`;
+
+    // Mettre à jour le contenu stocké pour le message d'erreur aussi
+    if (activeTabId && tabs[activeTabId] && tabs[activeTabId].chatMessages.length > 0) {
+      const lastMessage = tabs[activeTabId].chatMessages[tabs[activeTabId].chatMessages.length - 1];
+      if (lastMessage.role === 'assistant') {
+        lastMessage.content = errorBubble.innerHTML;
+      }
+    }
+  } finally {
+    loadingIndicator.classList.remove("active");
+    sendBtn.disabled = false;
+  }
+}
+
+// Fonction helper pour ajouter un message au chat
+function addChatMessage(content, role) {
+  if (!activeTabId || !tabs[activeTabId]) {
+    console.warn("Aucun onglet actif pour ajouter un message");
+    return null;
+  }
+
+  const chatMessages = document.getElementById("chatMessages");
+
+  const messageDiv = document.createElement("div");
+  messageDiv.className = `message ${role}`;
+
+  const bubbleDiv = document.createElement("div");
+  bubbleDiv.className = "message-bubble";
+
+  if (content) {
+    if (role === 'user') {
+      bubbleDiv.textContent = content;
+    } else {
+      bubbleDiv.innerHTML = content;
+    }
+  }
+
+  messageDiv.appendChild(bubbleDiv);
+  chatMessages.appendChild(messageDiv);
+
+  // Sauvegarder le message dans l'historique de l'onglet actif
+  // On stocke le contenu HTML final pour pouvoir le restaurer tel quel
+  tabs[activeTabId].chatMessages.push({
+    role: role,
+    content: bubbleDiv.innerHTML // Stocker le HTML rendu
+  });
+
+  // Scroll vers le bas
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  return bubbleDiv;
+}
+
+// Gestionnaire pour l'envoi avec Ctrl+Entrée
+document.addEventListener('DOMContentLoaded', function() {
+  const userMsgTextarea = document.getElementById('userMsg');
+  if (userMsgTextarea) {
+    userMsgTextarea.addEventListener('keydown', function(e) {
+      // Ctrl+Entrée ou Cmd+Entrée pour envoyer
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        askAI();
+      }
+      // Entrée seule pour nouvelle ligne (comportement par défaut)
+    });
+  }
+});
+
+// ============================================================================
+// Gestion des Onglets de la Sidebar
+// ============================================================================
+
+function switchSidebarTab(tabName) {
+  // Masquer tous les contenus
+  document.querySelectorAll('.tab-content').forEach(tab => {
+    tab.style.display = 'none';
+  });
+
+  // Désactiver tous les onglets
+  document.querySelectorAll('.sidebar-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+
+  // Afficher l'onglet sélectionné
+  if (tabName === 'apis') {
+    document.getElementById('apisTab').style.display = 'block';
+    document.querySelectorAll('.sidebar-tab')[0].classList.add('active');
+    loadAPIs();
+  } else if (tabName === 'environments') {
+    document.getElementById('environmentsTab').style.display = 'block';
+    document.querySelectorAll('.sidebar-tab')[1].classList.add('active');
+    loadEnvironments();
+  }
+}
+
+// ============================================================================
+// Gestion des APIs IA
+// ============================================================================
+
+async function loadAPIs() {
+  const apiList = document.getElementById('apiList');
+
+  try {
+    const res = await authFetch('/apis');
+    const apis = await res.json();
+
+    if (apis.length === 0) {
+      apiList.innerHTML = '<p style="color: #858585; text-align: center;">Aucune API configurée</p>';
+      return;
+    }
+
+    apiList.innerHTML = '';
+
+    apis.forEach(api => {
+      const apiItem = document.createElement('div');
+      apiItem.className = 'env-item';
+
+      const providerBadge = api.provider === 'claude' ?
+        '<span class="env-item-badge" style="background: #ca5010;">Claude</span>' :
+        '<span class="env-item-badge" style="background: #0e7a0d;">ChatGPT</span>';
+
+      apiItem.innerHTML = `
+        <div class="env-item-header">
+          <span class="env-item-name">${api.name}</span>
+          <div>${providerBadge}</div>
+        </div>
+        ${api.model ? `<div class="env-item-desc">Modèle: ${api.model}</div>` : ''}
+        <div class="env-item-actions">
+          <button class="btn-edit" onclick="editAPI('${api.id}')">✏️ Modifier</button>
+          <button class="btn-delete" onclick="deleteAPI('${api.id}')">🗑️ Supprimer</button>
+        </div>
+      `;
+
+      apiList.appendChild(apiItem);
+    });
+
+  } catch (error) {
+    apiList.innerHTML = `<p style="color: #f14c4c;">Erreur: ${error.message}</p>`;
+  }
+}
+
+function showCreateAPIForm() {
+  const container = document.getElementById('apiFormContainer');
+  container.style.display = 'block';
+
+  container.innerHTML = `
+    <div class="env-form">
+      <h3>Créer une Nouvelle API</h3>
+      <div class="form-group">
+        <label>ID de l'API (sans espaces)</label>
+        <input type="text" id="newApiId" placeholder="claude-perso" />
+      </div>
+      <div class="form-group">
+        <label>Nom d'affichage</label>
+        <input type="text" id="newApiName" placeholder="Claude (Personnel)" />
+      </div>
+      <div class="form-group">
+        <label>Provider</label>
+        <select id="newApiProvider">
+          <option value="claude">Claude (Anthropic)</option>
+          <option value="chatgpt">ChatGPT (OpenAI)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Clé API</label>
+        <input type="password" id="newApiKey" placeholder="sk-ant-..." />
+      </div>
+      <div class="form-group">
+        <label>Modèle (optionnel)</label>
+        <input type="text" id="newApiModel" placeholder="claude-sonnet-4-20250514" />
+      </div>
+      <div class="form-actions">
+        <button onclick="cancelAPIForm()" style="background: #4a4a4a;">Annuler</button>
+        <button onclick="saveNewAPI()" style="background: #0e7a0d;">Créer</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveNewAPI() {
+  const apiId = document.getElementById('newApiId').value.trim();
+  const name = document.getElementById('newApiName').value.trim();
+  const provider = document.getElementById('newApiProvider').value;
+  const apiKey = document.getElementById('newApiKey').value.trim();
+  const model = document.getElementById('newApiModel').value.trim();
+
+  if (!apiId || !name || !apiKey) {
+    alert('L\'ID, le nom et la clé API sont requis');
+    return;
+  }
+
+  const apiData = {
+    id: apiId,
+    name: name,
+    provider: provider,
+    api_key: apiKey,
+    model: model || (provider === 'claude' ? 'claude-sonnet-4-20250514' : '')
+  };
+
+  try {
+    const res = await authFetch(`/apis/${apiId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: apiData })
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      alert('API créée avec succès !');
+      cancelAPIForm();
+      loadAPIs();
+    } else {
+      alert('Erreur: ' + result.message);
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+async function editAPI(apiId) {
+  try {
+    const res = await authFetch(`/apis/${apiId}`);
+    const apiData = await res.json();
+
+    const container = document.getElementById('apiFormContainer');
+    container.style.display = 'block';
+
+    container.innerHTML = `
+      <div class="env-form">
+        <h3>Modifier: ${apiData.name}</h3>
+        <div class="form-group">
+          <label>Nom d'affichage</label>
+          <input type="text" id="editApiName" value="${apiData.name || ''}" />
+        </div>
+        <div class="form-group">
+          <label>Provider</label>
+          <select id="editApiProvider">
+            <option value="claude" ${apiData.provider === 'claude' ? 'selected' : ''}>Claude (Anthropic)</option>
+            <option value="chatgpt" ${apiData.provider === 'chatgpt' ? 'selected' : ''}>ChatGPT (OpenAI)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Clé API</label>
+          <input type="password" id="editApiKey" value="${apiData.api_key || ''}" />
+        </div>
+        <div class="form-group">
+          <label>Modèle (optionnel)</label>
+          <input type="text" id="editApiModel" value="${apiData.model || ''}" />
+        </div>
+        <div class="form-actions">
+          <button onclick="cancelAPIForm()" style="background: #4a4a4a;">Annuler</button>
+          <button onclick="saveEditAPI('${apiId}')" style="background: #0e639c;">Sauvegarder</button>
+        </div>
+      </div>
+    `;
+
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+async function saveEditAPI(apiId) {
+  const name = document.getElementById('editApiName').value.trim();
+  const provider = document.getElementById('editApiProvider').value;
+  const apiKey = document.getElementById('editApiKey').value.trim();
+  const model = document.getElementById('editApiModel').value.trim();
+
+  const apiData = {
+    name: name,
+    provider: provider,
+    api_key: apiKey,
+    model: model
+  };
+
+  try {
+    const res = await authFetch(`/apis/${apiId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: apiData })
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      alert('API modifiée avec succès !');
+      cancelAPIForm();
+      loadAPIs();
+    } else {
+      alert('Erreur: ' + result.message);
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+async function deleteAPI(apiId) {
+  if (!confirm(`Êtes-vous sûr de vouloir supprimer cette API ?`)) {
+    return;
+  }
+
+  try {
+    const res = await authFetch(`/apis/${apiId}`, {
+      method: 'DELETE'
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      alert('API supprimée !');
+      loadAPIs();
+    } else {
+      alert('Erreur: ' + result.message);
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+function cancelAPIForm() {
+  document.getElementById('apiFormContainer').style.display = 'none';
+  document.getElementById('apiFormContainer').innerHTML = '';
+}
+
+// ============================================================================
+// Gestion des Environnements
+// ============================================================================
+
+function toggleEnvSidebar() {
+  const sidebar = document.getElementById('envSidebar');
+  sidebar.classList.toggle('open');
+
+  if (sidebar.classList.contains('open')) {
+    // Charger l'onglet actif (APIs par défaut)
+    switchSidebarTab('apis');
+  }
+}
+
+async function loadEnvironments() {
+  const envList = document.getElementById('envList');
+
+  try {
+    const res = await authFetch('/environments');
+    const environments = await res.json();
+
+    if (environments.length === 0) {
+      envList.innerHTML = '<p style="color: #858585; text-align: center;">Aucun environnement configuré</p>';
+      return;
+    }
+
+    envList.innerHTML = '';
+
+    environments.forEach(env => {
+      const envItem = document.createElement('div');
+      envItem.className = 'env-item';
+
+      const badges = [];
+      if (env.execution_mode === 'local') {
+        badges.push('<span class="env-item-badge badge-local">LOCAL</span>');
+      } else {
+        badges.push('<span class="env-item-badge badge-remote">REMOTE</span>');
+      }
+
+      envItem.innerHTML = `
+        <div class="env-item-header">
+          <span class="env-item-name">${env.display_name}</span>
+          <div>${badges.join(' ')}</div>
+        </div>
+        ${env.description ? `<div class="env-item-desc">${env.description}</div>` : ''}
+        <div class="env-item-actions">
+          <button class="btn-load" onclick="loadEnvironment('${env.filename}')">
+            🔄 Charger
+          </button>
+          <button class="btn-edit" onclick="editEnvironment('${env.filename}')">✏️ Modifier</button>
+          <button class="btn-delete" onclick="deleteEnvironment('${env.filename}')">
+            🗑️ Supprimer
+          </button>
+        </div>
+      `;
+
+      envList.appendChild(envItem);
+    });
+
+  } catch (error) {
+    envList.innerHTML = `<p style="color: #f14c4c;">Erreur: ${error.message}</p>`;
+  }
+}
+
+async function showCreateForm() {
+  const container = document.getElementById('envFormContainer');
+  container.style.display = 'block';
+
+  // Charger les APIs disponibles
+  try {
+    const res = await authFetch('/apis');
+    const apis = await res.json();
+
+    const apiOptions = apis.length > 0
+      ? apis.map(api => `<option value="${api.id}">${api.name}</option>`).join('')
+      : '<option value="">Aucune API configurée</option>';
+
+    container.innerHTML = `
+      <div class="env-form">
+        <h3>Créer un Nouvel Environnement</h3>
+        <div class="form-group">
+          <label>Nom du fichier (sans .env)</label>
+          <input type="text" id="newEnvFilename" placeholder="mon-environnement" />
+        </div>
+        <div class="form-group">
+          <label>Nom d'affichage</label>
+          <input type="text" id="newEnvName" placeholder="Mon Environnement" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="newEnvDesc" placeholder="Description optionnelle" />
+        </div>
+        <div class="form-group">
+          <label>API IA à utiliser</label>
+          <select id="newEnvApiId">
+            ${apiOptions}
+          </select>
+          <small style="color: #858585; margin-top: 4px; display: block;">
+            Gérez les APIs dans l'onglet "APIs IA"
+          </small>
+        </div>
+        <div class="form-group">
+          <label>Mode d'exécution</label>
+          <select id="newEnvMode">
+            <option value="local">Local</option>
+            <option value="wsl">WSL (Windows Subsystem for Linux)</option>
+            <option value="remote">Remote (SSH)</option>
+          </select>
+        </div>
+        <div id="wslFields" style="display: none;">
+          <div class="form-group">
+            <label>Distribution WSL (optionnel)</label>
+            <input type="text" id="newEnvWSLDistro" placeholder="Ubuntu, Debian, etc. (laisser vide pour la distribution par défaut)" />
+            <small style="color: #858585; margin-top: 4px; display: block;">
+              Pour lister vos distributions: wsl -l -v
+            </small>
+          </div>
+        </div>
+        <div id="sshFields" style="display: none;">
+          <div class="form-group">
+            <label>SSH Host</label>
+            <input type="text" id="newEnvSSHHost" placeholder="192.168.1.100" />
+          </div>
+          <div class="form-group">
+            <label>SSH User</label>
+            <input type="text" id="newEnvSSHUser" placeholder="root" />
+          </div>
+          <div class="form-group">
+            <label>SSH Port</label>
+            <input type="text" id="newEnvSSHPort" value="22" />
+          </div>
+          <div class="form-group">
+            <label>SSH Key Path</label>
+            <input type="text" id="newEnvSSHKeyPath" placeholder="C:\\Users\\user\\.ssh\\id_rsa" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button onclick="cancelForm()" style="background: #4a4a4a;">Annuler</button>
+          <button onclick="saveNewEnvironment()" style="background: #0e7a0d;">Créer</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('newEnvMode').addEventListener('change', (e) => {
+      const mode = e.target.value;
+      document.getElementById('sshFields').style.display = mode === 'remote' ? 'block' : 'none';
+      document.getElementById('wslFields').style.display = mode === 'wsl' ? 'block' : 'none';
+    });
+  } catch (error) {
+    alert('Erreur lors du chargement des APIs: ' + error.message);
+  }
+}
+
+async function saveNewEnvironment() {
+  const filename = document.getElementById('newEnvFilename').value.trim();
+  const envName = document.getElementById('newEnvName').value.trim();
+  const envDesc = document.getElementById('newEnvDesc').value.trim();
+  const apiId = document.getElementById('newEnvApiId').value;
+  const mode = document.getElementById('newEnvMode').value;
+
+  if (!filename || !envName) {
+    alert('Le nom du fichier et le nom d\'affichage sont requis');
+    return;
+  }
+
+  if (!apiId) {
+    alert('Veuillez sélectionner une API IA');
+    return;
+  }
+
+  const envData = {
+    ENV_NAME: envName,
+    ENV_DESCRIPTION: envDesc,
+    AI_API_ID: apiId,
+    EXECUTION_MODE: mode
+  };
+
+  if (mode === 'remote') {
+    envData.SSH_HOST = document.getElementById('newEnvSSHHost').value.trim() || '192.168.1.100';
+    envData.SSH_USER = document.getElementById('newEnvSSHUser').value.trim() || 'root';
+    envData.SSH_PORT = document.getElementById('newEnvSSHPort').value.trim() || '22';
+    envData.SSH_KEY_PATH = document.getElementById('newEnvSSHKeyPath').value.trim() || '';
+  } else if (mode === 'wsl') {
+    const wslDistro = document.getElementById('newEnvWSLDistro').value.trim();
+    if (wslDistro) {
+      envData.WSL_DISTRIBUTION = wslDistro;
+    }
+  }
+
+  try {
+    const res = await authFetch(`/environments/${filename}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: envData })
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      alert('Environnement créé avec succès !');
+      cancelForm();
+      loadEnvironments();
+    } else {
+      alert('Erreur: ' + result.message);
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+async function editEnvironment(filename) {
+  try {
+    const [envRes, apisRes] = await Promise.all([
+      authFetch(`/environments/${filename}`),
+      authFetch('/apis')
+    ]);
+
+    const envData = await envRes.json();
+    const apis = await apisRes.json();
+
+    const container = document.getElementById('envFormContainer');
+    container.style.display = 'block';
+
+    const apiOptions = apis.length > 0
+      ? apis.map(api => `<option value="${api.id}" ${envData.AI_API_ID === api.id ? 'selected' : ''}>${api.name}</option>`).join('')
+      : '<option value="">Aucune API configurée</option>';
+
+    container.innerHTML = `
+      <div class="env-form">
+        <h3>Modifier: ${envData.ENV_NAME || filename}</h3>
+        <div class="form-group">
+          <label>Nom d'affichage</label>
+          <input type="text" id="editEnvName" value="${envData.ENV_NAME || ''}" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="editEnvDesc" value="${envData.ENV_DESCRIPTION || ''}" />
+        </div>
+        <div class="form-group">
+          <label>API IA à utiliser</label>
+          <select id="editEnvApiId">
+            ${apiOptions}
+          </select>
+          <small style="color: #858585; margin-top: 4px; display: block;">
+            Gérez les APIs dans l'onglet "APIs IA"
+          </small>
+        </div>
+        <div class="form-group">
+          <label>Mode d'exécution</label>
+          <select id="editEnvMode">
+            <option value="local" ${envData.EXECUTION_MODE === 'local' ? 'selected' : ''}>Local</option>
+            <option value="wsl" ${envData.EXECUTION_MODE === 'wsl' ? 'selected' : ''}>WSL (Windows Subsystem for Linux)</option>
+            <option value="remote" ${envData.EXECUTION_MODE === 'remote' ? 'selected' : ''}>Remote (SSH)</option>
+          </select>
+        </div>
+        <div id="editWslFields" style="display: ${envData.EXECUTION_MODE === 'wsl' ? 'block' : 'none'};">
+          <div class="form-group">
+            <label>Distribution WSL (optionnel)</label>
+            <input type="text" id="editEnvWSLDistro" value="${envData.WSL_DISTRIBUTION || ''}" placeholder="Ubuntu, Debian, etc." />
+            <small style="color: #858585; margin-top: 4px; display: block;">
+              Pour lister vos distributions: wsl -l -v
+            </small>
+          </div>
+        </div>
+        <div id="editSshFields" style="display: ${envData.EXECUTION_MODE === 'remote' ? 'block' : 'none'};">
+          <div class="form-group">
+            <label>SSH Host</label>
+            <input type="text" id="editEnvSSHHost" value="${envData.SSH_HOST || ''}" />
+          </div>
+          <div class="form-group">
+            <label>SSH User</label>
+            <input type="text" id="editEnvSSHUser" value="${envData.SSH_USER || ''}" />
+          </div>
+          <div class="form-group">
+            <label>SSH Port</label>
+            <input type="text" id="editEnvSSHPort" value="${envData.SSH_PORT || '22'}" />
+          </div>
+          <div class="form-group">
+            <label>SSH Key Path</label>
+            <input type="text" id="editEnvSSHKeyPath" value="${envData.SSH_KEY_PATH || ''}" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button onclick="cancelForm()" style="background: #4a4a4a;">Annuler</button>
+          <button onclick="saveEditEnvironment('${filename}')" style="background: #0e639c;">Sauvegarder</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('editEnvMode').addEventListener('change', (e) => {
+      const mode = e.target.value;
+      document.getElementById('editSshFields').style.display = mode === 'remote' ? 'block' : 'none';
+      document.getElementById('editWslFields').style.display = mode === 'wsl' ? 'block' : 'none';
+    });
+
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+async function saveEditEnvironment(filename) {
+  const envName = document.getElementById('editEnvName').value.trim();
+  const envDesc = document.getElementById('editEnvDesc').value.trim();
+  const apiId = document.getElementById('editEnvApiId').value;
+  const mode = document.getElementById('editEnvMode').value;
+
+  if (!apiId) {
+    alert('Veuillez sélectionner une API IA');
+    return;
+  }
+
+  const envData = {
+    ENV_NAME: envName,
+    ENV_DESCRIPTION: envDesc,
+    AI_API_ID: apiId,
+    EXECUTION_MODE: mode
+  };
+
+  if (mode === 'remote') {
+    envData.SSH_HOST = document.getElementById('editEnvSSHHost').value.trim();
+    envData.SSH_USER = document.getElementById('editEnvSSHUser').value.trim();
+    envData.SSH_PORT = document.getElementById('editEnvSSHPort').value.trim();
+    envData.SSH_KEY_PATH = document.getElementById('editEnvSSHKeyPath').value.trim();
+  } else if (mode === 'wsl') {
+    const wslDistro = document.getElementById('editEnvWSLDistro').value.trim();
+    if (wslDistro) {
+      envData.WSL_DISTRIBUTION = wslDistro;
+    }
+  }
+
+  try {
+    const res = await authFetch(`/environments/${filename}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: envData })
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      alert('Environnement modifié avec succès !');
+      cancelForm();
+      loadEnvironments();
+    } else {
+      alert('Erreur: ' + result.message);
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+async function deleteEnvironment(filename) {
+  if (!confirm(`Êtes-vous sûr de vouloir supprimer l'environnement "${filename}" ?`)) {
+    return;
+  }
+
+  try {
+    const res = await authFetch(`/environments/${filename}`, {
+      method: 'DELETE'
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      alert('Environnement supprimé !');
+      loadEnvironments();
+    } else {
+      alert('Erreur: ' + result.message);
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+async function loadEnvironment(filename) {
+  try {
+    // Récupérer les détails de l'environnement pour vérifier s'il faut demander un mot de passe
+    const envRes = await authFetch(`/environments/${filename}`);
+    const envData = await envRes.json();
+
+    let sshPassword = null;
+
+    // Si c'est un environnement remote sans mot de passe et sans clé SSH, demander le mot de passe
+    if (envData.EXECUTION_MODE === 'remote' &&
+        (!envData.SSH_PASSWORD || envData.SSH_PASSWORD === '') &&
+        (!envData.SSH_KEY_PATH || envData.SSH_KEY_PATH === '')) {
+
+      // Afficher une modal pour demander le mot de passe
+      sshPassword = await showPasswordPrompt(`Mot de passe SSH pour ${envData.SSH_USER}@${envData.SSH_HOST}:`);
+
+      if (!sshPassword) {
+        alert(`⚠️  Chargement annulé: mot de passe requis`);
+        return;
+      }
+    }
+
+    // Charger l'environnement avec le mot de passe si nécessaire
+    const res = await authFetch(`/environments/load-v2/${filename}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ssh_password: sshPassword })
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      // Créer un nouvel onglet pour cet environnement
+      const newTabId = createTab(result.env_name || filename, envData);
+
+      // Afficher les informations de connexion dans le nouveau terminal
+      const tab = tabs[newTabId];
+      tab.term.writeln(`\x1b[32m✅ Environnement chargé: ${result.env_name}\x1b[0m`);
+      tab.term.writeln(`\x1b[36m   Mode: ${result.execution_mode}\x1b[0m`);
+      tab.term.writeln(`\x1b[36m   IA: ${result.ai_provider}\x1b[0m`);
+      tab.term.writeln('');
+
+      loadEnvironments();
+    } else {
+      alert('Erreur: ' + result.message);
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+}
+
+function cancelForm() {
+  document.getElementById('envFormContainer').style.display = 'none';
+  document.getElementById('envFormContainer').innerHTML = '';
+}
+
+// ============================================================================
+// Modales personnalisées
+// ============================================================================
+
+/**
+ * Affiche une modal de saisie de mot de passe
+ * @param {string} message - Le message à afficher
+ * @returns {Promise<string|null>} Le mot de passe saisi ou null si annulé
+ */
+function showPasswordPrompt(message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active';
+    overlay.innerHTML = `
+      <div class="modal-box">
+        <div class="modal-header">🔐 Mot de passe requis</div>
+        <div class="modal-body">${message}</div>
+        <input type="password" class="modal-input" id="passwordInput" placeholder="Entrez le mot de passe..." />
+        <div class="modal-actions">
+          <button class="modal-btn modal-btn-secondary" onclick="this.closest('.modal-overlay').remove()">Annuler</button>
+          <button class="modal-btn modal-btn-primary" id="passwordSubmit">OK</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('#passwordInput');
+    const submitBtn = overlay.querySelector('#passwordSubmit');
+
+    input.focus();
+
+    const submit = () => {
+      const password = input.value;
+      overlay.remove();
+      resolve(password || null);
+    };
+
+    const cancel = () => {
+      overlay.remove();
+      resolve(null);
+    };
+
+    submitBtn.onclick = submit;
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') submit();
+      if (e.key === 'Escape') cancel();
+    };
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cancel();
+    };
+  });
+}
+
+/**
+ * Affiche une modal de confirmation
+ * @param {string} message - Le message à afficher
+ * @returns {Promise<boolean>} true si confirmé, false sinon
+ */
+function showConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active';
+    overlay.innerHTML = `
+      <div class="modal-box">
+        <div class="modal-header">⚠️ Confirmation</div>
+        <div class="modal-body">${message}</div>
+        <div class="modal-actions">
+          <button class="modal-btn modal-btn-secondary" id="confirmCancel">Annuler</button>
+          <button class="modal-btn modal-btn-primary" id="confirmOk">Confirmer</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const confirmBtn = overlay.querySelector('#confirmOk');
+    const cancelBtn = overlay.querySelector('#confirmCancel');
+
+    const confirm = () => {
+      overlay.remove();
+      resolve(true);
+    };
+
+    const cancel = () => {
+      overlay.remove();
+      resolve(false);
+    };
+
+    confirmBtn.onclick = confirm;
+    cancelBtn.onclick = cancel;
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cancel();
+    };
+
+    document.addEventListener('keydown', function handler(e) {
+      if (e.key === 'Escape') {
+        cancel();
+        document.removeEventListener('keydown', handler);
+      }
+    });
+  });
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+Collecting msal
+  Downloading msal-1.34.0-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: requests<3,>=2.0.0 in C:\Users\g.beard\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from msal) (2.32.5)
+Collecting PyJWT<3,>=1.0.0 (from PyJWT[crypto]<3,>=1.0.0->msal)
+  Downloading pyjwt-2.11.0-py3-none-any.whl.metadata (4.0 kB)
+Requirement already satisfied: cryptography<49,>=2.5 in C:\Users\g.beard\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from msal) (46.0.5)
+Requirement already satisfied: cffi>=2.0.0 in C:\Users\g.beard\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from cryptography<49,>=2.5->msal) (2.0.0)
+Requirement already satisfied: charset_normalizer<4,>=2 in C:\Users\g.beard\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from requests<3,>=2.0.0->msal) (3.4.4)
+Requirement already satisfied: idna<4,>=2.5 in C:\Users\g.beard\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from requests<3,>=2.0.0->msal) (3.11)
+Requirement already satisfied: urllib3<3,>=1.21.1 in C:\Users\g.beard\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from requests<3,>=2.0.0->msal) (2.6.3)
+Requirement already satisfied: certifi>=2017.4.17 in C:\Users\g.beard\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from requests<3,>=2.0.0->msal) (2026.1.4)
+Requirement already satisfied: pycparser in C:\Users\g.beard\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from cffi>=2.0.0->cryptography<49,>=2.5->msal) (3.0)
+Downloading msal-1.34.0-py3-none-any.whl (116 kB)
+Downloading pyjwt-2.11.0-py3-none-any.whl (28 kB)
+Installing collected packages: PyJWT, msal
+
+Successfully installed PyJWT-2.11.0 msal-1.34.0

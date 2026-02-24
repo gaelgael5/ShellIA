@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>AI Shell Copilot</title>
+<!-- Bibliothèque Markdown -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- XTerm.js -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+<style>
+body {
+  display:flex;
+  height:100vh;
+  margin:0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: #1e1e1e;
+}
+
+/* Panel IA */
+#ai {
+  width:40%;
+  border-right:2px solid #404040;
+  padding:20px;
+  overflow:auto;
+  background: #252526;
+  color: #cccccc;
+}
+
+#ai h3 {
+  color: #ffffff;
+  margin-top: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Panel Terminal */
+#term {
+  width:60%;
+  padding:0;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+}
+
+#term h3 {
+  color: #ffffff;
+  margin: 15px 20px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+#terminal-container {
+  flex-grow: 1;
+  padding: 10px;
+  overflow: hidden;
+}
+
+/* Textarea IA */
+textarea {
+  width: calc(100% - 20px);
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #cccccc;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+/* Boutons */
+button {
+  display:block;
+  margin:10px 0;
+  padding: 10px 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s, transform 0.1s;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:disabled {
+  background: #4a4a4a !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Bouton d'envoi */
+#sendBtn {
+  width: 100%;
+  background: #0e639c;
+  color: white;
+}
+#sendBtn:hover:not(:disabled) {
+  background: #1177bb;
+}
+
+/* Indicateur de chargement */
+.loading {
+  display: none;
+  margin: 10px 0;
+  padding: 12px;
+  background: #264f78;
+  border-left: 4px solid #007acc;
+  border-radius: 4px;
+  font-style: italic;
+  color: #9cdcfe;
+}
+.loading.active {
+  display: block;
+}
+.loading::after {
+  content: '...';
+  animation: dots 1.5s steps(4, end) infinite;
+}
+@keyframes dots {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60%, 100% { content: '...'; }
+}
+
+/* Styles pour le Markdown */
+#aiResponse {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #cccccc;
+}
+#aiResponse h1, #aiResponse h2, #aiResponse h3 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  color: #ffffff;
+}
+#aiResponse h1 {
+  font-size: 1.8em;
+  border-bottom: 2px solid #404040;
+  padding-bottom: 0.3em;
+}
+#aiResponse h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #404040;
+  padding-bottom: 0.3em;
+}
+#aiResponse h3 {
+  font-size: 1.25em;
+}
+#aiResponse h4 {
+  font-size: 1.1em;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+#aiResponse p {
+  margin: 0.8em 0;
+  line-height: 1.7;
+}
+#aiResponse code {
+  background: #1e1e1e;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 85%;
+  border: 1px solid #3c3c3c;
+  color: #ce9178;
+}
+#aiResponse pre {
+  background: #1e1e1e;
+  padding: 16px;
+  border-radius: 6px;
+  overflow: auto;
+  border: 1px solid #3c3c3c;
+  line-height: 1.45;
+}
+#aiResponse pre code {
+  background: none;
+  padding: 0;
+  border: none;
+  font-size: 100%;
+  color: #d4d4d4;
+}
+#aiResponse ul, #aiResponse ol {
+  margin: 0.8em 0;
+  padding-left: 2em;
+}
+#aiResponse li {
+  margin: 0.25em 0;
+}
+#aiResponse blockquote {
+  border-left: 4px solid #515151;
+  padding-left: 1em;
+  padding-right: 1em;
+  color: #858585;
+  margin: 1em 0;
+  font-style: italic;
+}
+#aiResponse a {
+  color: #4daafc;
+  text-decoration: none;
+}
+#aiResponse a:hover {
+  text-decoration: underline;
+}
+#aiResponse strong {
+  font-weight: 600;
+  color: #ffffff;
+}
+#aiResponse em {
+  font-style: italic;
+}
+#aiResponse table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+#aiResponse table th,
+#aiResponse table td {
+  border: 1px solid #3c3c3c;
+  padding: 6px 13px;
+}
+#aiResponse table th {
+  background: #1e1e1e;
+  font-weight: 600;
+}
+#aiResponse table tr:nth-child(2n) {
+  background: #252526;
+}
+#aiResponse hr {
+  border: none;
+  border-top: 2px solid #404040;
+  margin: 1.5em 0;
+}
+
+/* Styles pour les boutons de commande */
+.command-button {
+  display: block;
+  margin: 8px 0;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 14px;
+  text-align: left;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.command-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+.command-button:active {
+  transform: translateY(0);
+}
+
+.risk-low { background: #0e7a0d; color: white; }
+.risk-low:hover { background: #107c10; }
+.risk-medium { background: #ca5010; color: white; }
+.risk-medium:hover { background: #d3590f; }
+.risk-high { background: #c50f1f; color: white; animation: blink 1s infinite; }
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  25%, 75% { opacity: 0.6; }
+}
+
+.command-desc {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+/* XTerm custom styles */
+.xterm {
+  padding: 10px;
+}
+
+.xterm-viewport {
+  overflow-y: auto;
+}
+</style>
+</head>
+<body>
+
+<div id="ai">
+  <h3>🤖 IA Copilot</h3>
+  <textarea id="userMsg" rows="4" placeholder="Décrivez votre problème ou posez une question..."></textarea>
+  <button id="sendBtn" onclick="askAI()">📤 Envoyer</button>
+  <div class="loading" id="loadingIndicator">L'IA réfléchit</div>
+  <div id="aiResponse"></div>
+</div>
+
+<div id="term">
+  <h3>💻 Terminal</h3>
+  <div id="terminal-container"></div>
+</div>
+
+<script>
+// Initialisation du terminal XTerm
+const term = new Terminal({
+  cursorBlink: true,
+  fontSize: 14,
+  fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+  theme: {
+    background: '#1e1e1e',
+    foreground: '#cccccc',
+    cursor: '#ffffff',
+    cursorAccent: '#000000',
+    selection: '#264f78',
+    black: '#000000',
+    red: '#cd3131',
+    green: '#0dbc79',
+    yellow: '#e5e510',
+    blue: '#2472c8',
+    magenta: '#bc3fbc',
+    cyan: '#11a8cd',
+    white: '#e5e5e5',
+    brightBlack: '#666666',
+    brightRed: '#f14c4c',
+    brightGreen: '#23d18b',
+    brightYellow: '#f5f543',
+    brightBlue: '#3b8eea',
+    brightMagenta: '#d670d6',
+    brightCyan: '#29b8db',
+    brightWhite: '#e5e5e5'
+  },
+  scrollback: 1000
+});
+
+const fitAddon = new FitAddon.FitAddon();
+term.loadAddon(fitAddon);
+term.open(document.getElementById('terminal-container'));
+fitAddon.fit();
+
+// Ajuster la taille du terminal quand la fenêtre change
+window.addEventListener('resize', () => {
+  fitAddon.fit();
+});
+
+// Variables pour le terminal
+let currentLine = '';
+let commandHistory = [];
+let historyIndex = -1;
+const prompt = '\x1b[32m$\x1b[0m ';
+
+// Afficher le message de bienvenue
+term.writeln('\x1b[36m╔════════════════════════════════════════════════════════╗\x1b[0m');
+term.writeln('\x1b[36m║\x1b[0m  \x1b[1;33mBienvenue dans ShellIA Terminal\x1b[0m                    \x1b[36m║\x1b[0m');
+term.writeln('\x1b[36m║\x1b[0m  Tapez vos commandes shell ci-dessous...             \x1b[36m║\x1b[0m');
+term.writeln('\x1b[36m╚════════════════════════════════════════════════════════╝\x1b[0m');
+term.writeln('');
+term.write(prompt);
+
+// Gestion des entrées clavier
+term.onData(data => {
+  const code = data.charCodeAt(0);
+
+  // Enter (code 13)
+  if (code === 13) {
+    term.write('\r\n');
+    if (currentLine.trim()) {
+      executeCommand(currentLine);
+      commandHistory.push(currentLine);
+      historyIndex = commandHistory.length;
+    } else {
+      term.write(prompt);
+    }
+    currentLine = '';
+  }
+  // Backspace (code 127)
+  else if (code === 127) {
+    if (currentLine.length > 0) {
+      currentLine = currentLine.slice(0, -1);
+      term.write('\b \b');
+    }
+  }
+  // Arrow Up (code 27, 91, 65)
+  else if (data === '\x1b[A') {
+    if (historyIndex > 0) {
+      // Effacer la ligne actuelle
+      term.write('\r' + prompt);
+      term.write(' '.repeat(currentLine.length));
+      term.write('\r' + prompt);
+
+      // Remonter dans l'historique
+      historyIndex--;
+      currentLine = commandHistory[historyIndex];
+      term.write(currentLine);
+    }
+  }
+  // Arrow Down (code 27, 91, 66)
+  else if (data === '\x1b[B') {
+    if (historyIndex < commandHistory.length - 1) {
+      // Effacer la ligne actuelle
+      term.write('\r' + prompt);
+      term.write(' '.repeat(currentLine.length));
+      term.write('\r' + prompt);
+
+      // Descendre dans l'historique
+      historyIndex++;
+      currentLine = commandHistory[historyIndex];
+      term.write(currentLine);
+    } else if (historyIndex === commandHistory.length - 1) {
+      // Effacer et revenir à une ligne vide
+      term.write('\r' + prompt);
+      term.write(' '.repeat(currentLine.length));
+      term.write('\r' + prompt);
+      historyIndex = commandHistory.length;
+      currentLine = '';
+    }
+  }
+  // Ctrl+C (code 3)
+  else if (code === 3) {
+    term.write('^C\r\n' + prompt);
+    currentLine = '';
+  }
+  // Ctrl+L (code 12) - Clear screen
+  else if (code === 12) {
+    term.clear();
+    term.write(prompt);
+  }
+  // Caractères normaux
+  else if (code >= 32 && code < 127) {
+    currentLine += data;
+    term.write(data);
+  }
+});
+
+// Fonction pour exécuter une commande
+async function executeCommand(cmd) {
+  try {
+    const res = await fetch("/execute", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({command: cmd})
+    });
+
+    if (!res.ok) {
+      throw new Error(`Erreur HTTP: ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    // Afficher stdout
+    if (data.stdout) {
+      term.write(data.stdout.replace(/\n/g, '\r\n'));
+    }
+
+    // Afficher stderr en rouge
+    if (data.stderr) {
+      term.write('\x1b[31m' + data.stderr.replace(/\n/g, '\r\n') + '\x1b[0m');
+    }
+
+    // Afficher le code de retour
+    if (data.return_code !== undefined && data.return_code !== 0) {
+      term.writeln(`\x1b[31m[Exit code: ${data.return_code}]\x1b[0m`);
+    }
+
+  } catch (error) {
+    term.writeln(`\x1b[31m[❌ Erreur: ${error.message}]\x1b[0m`);
+  } finally {
+    term.write(prompt);
+  }
+}
+
+// Fonction pour insérer une commande dans le terminal (depuis l'IA)
+function copyToTerminal(cmd) {
+  // Effacer la ligne actuelle
+  term.write('\r' + prompt);
+  term.write(' '.repeat(currentLine.length));
+  term.write('\r' + prompt);
+
+  // Insérer la nouvelle commande
+  currentLine = cmd;
+  term.write(cmd);
+
+  // Effet visuel
+  setTimeout(() => {
+    term.write('\x1b[7m \x1b[0m'); // Inverse video pour highlight
+    setTimeout(() => {
+      term.write('\b \b');
+    }, 200);
+  }, 100);
+}
+
+// ============================================================================
+// Partie IA (inchangée)
+// ============================================================================
+
+function extractJsonBlocks(markdown) {
+  const jsonBlocks = [];
+  const regex = /```json\s*([\s\S]*?)```/g;
+  let match;
+
+  while ((match = regex.exec(markdown)) !== null) {
+    try {
+      const jsonContent = match[1].trim();
+      const parsed = JSON.parse(jsonContent);
+      jsonBlocks.push(parsed);
+    } catch (e) {
+      console.error("Erreur parsing JSON block:", e);
+    }
+  }
+
+  return jsonBlocks;
+}
+
+function removeJsonBlocks(markdown) {
+  return markdown.replace(/```json\s*[\s\S]*?```/g, '');
+}
+
+async function askAI() {
+  const msg = document.getElementById("userMsg").value.trim();
+
+  if (!msg) {
+    alert("Veuillez saisir un message");
+    return;
+  }
+
+  const loadingIndicator = document.getElementById("loadingIndicator");
+  const sendBtn = document.getElementById("sendBtn");
+  const aiDiv = document.getElementById("aiResponse");
+
+  loadingIndicator.classList.add("active");
+  sendBtn.disabled = true;
+  aiDiv.innerHTML = "";
+
+  try {
+    const res = await fetch("/ai/suggest", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({message: msg})
+    });
+
+    if (!res.ok) {
+      throw new Error(`Erreur HTTP: ${res.status}`);
+    }
+
+    const responseData = await res.json();
+    let markdownContent = "";
+
+    if (typeof responseData === 'string') {
+      markdownContent = responseData;
+    } else if (responseData.markdown) {
+      markdownContent = responseData.markdown;
+    } else {
+      markdownContent = responseData.explanation || "";
+    }
+
+    const jsonBlocks = extractJsonBlocks(markdownContent);
+    const cleanMarkdown = removeJsonBlocks(markdownContent);
+
+    aiDiv.innerHTML = marked.parse(cleanMarkdown);
+
+    jsonBlocks.forEach(block => {
+      if (block.commands && Array.isArray(block.commands)) {
+        block.commands.forEach(cmd => {
+          const btnContainer = document.createElement("div");
+          btnContainer.style.marginBottom = "10px";
+
+          const b = document.createElement("button");
+          b.className = `command-button risk-${cmd.risk}`;
+          b.innerHTML = `▶ ${cmd.cmd}`;
+
+          if (cmd.description) {
+            const desc = document.createElement("div");
+            desc.className = "command-desc";
+            desc.textContent = cmd.description;
+            b.appendChild(desc);
+          }
+
+          b.onclick = () => copyToTerminal(cmd.cmd);
+          btnContainer.appendChild(b);
+          aiDiv.appendChild(btnContainer);
+        });
+      }
+    });
+
+    if (responseData.commands && Array.isArray(responseData.commands)) {
+      responseData.commands.forEach(cmd => {
+        const btnContainer = document.createElement("div");
+        btnContainer.style.marginBottom = "10px";
+
+        const b = document.createElement("button");
+        b.className = `command-button risk-${cmd.risk}`;
+        b.innerHTML = `▶ ${cmd.cmd}`;
+
+        if (cmd.description) {
+          const desc = document.createElement("div");
+          desc.className = "command-desc";
+          desc.textContent = cmd.description;
+          b.appendChild(desc);
+        }
+
+        b.onclick = () => copyToTerminal(cmd.cmd);
+        btnContainer.appendChild(b);
+        aiDiv.appendChild(btnContainer);
+      });
+    }
+
+    document.getElementById("userMsg").value = "";
+
+  } catch (error) {
+    aiDiv.innerHTML = `<div style="color: #f14c4c; padding: 10px; background: #3b1f1f; border-left: 4px solid #c50f1f; border-radius: 4px;">
+      <strong>❌ Erreur:</strong> ${error.message}
+    </div>`;
+  } finally {
+    loadingIndicator.classList.remove("active");
+    sendBtn.disabled = false;
+  }
+}
+</script>
+
+</body>
+</html>
