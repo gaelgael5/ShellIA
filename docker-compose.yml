@@ -37,7 +37,9 @@ services:
       - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-20250514}
 
     volumes:
-      # Données utilisateurs (profiles, environnements, APIs)
+      # Base de données utilisateurs (SQLite)
+      - shellia_data:/app/data
+      # Profils, environnements et APIs par utilisateur
       - shellia_users:/app/users
       # Environnements globaux
       - shellia_environments:/app/environments
@@ -55,6 +57,8 @@ services:
           memory: 128M
 
 volumes:
+  shellia_data:
+    name: shellia_data
   shellia_users:
     name: shellia_users
   shellia_environments:
