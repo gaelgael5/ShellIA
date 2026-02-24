@@ -1,0 +1,25 @@
+# ============================================================
+# ShellIA - AppVeyor CI/CD Configuration
+# ============================================================
+# Modeled after: https://github.com/Moleculars/Parrot
+# ============================================================
+version: 1.0.{build}
+
+image:
+  - Ubuntu
+
+configuration: Release
+platform: Any CPU
+
+environment:
+  matrix:
+    - ARCH: amd64
+
+build_script:
+  - ps: ./.appveyor/build.ps1
+
+test_script:
+  - ps: ./.appveyor/test.ps1
+
+deploy_script:
+  - ps: ./.appveyor/deploy.ps1
