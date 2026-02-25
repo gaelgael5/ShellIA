@@ -6,36 +6,39 @@ from google.auth.transport import requests
 from typing import Optional
 
 # Configuration Google OAuth
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 
 
 class GoogleAuthProvider:
-    """Gère l'authentification Google OpenID Connect."""
+    """Manages Google OpenID Connect authentication."""
 
-    def __init__(self, client_id: Optional[str] = None):
+    def __init__(self, client_id: Optional[str] = None, client_secret: Optional[str] = None):
         """
-        Initialise le provider Google Auth.
+        Initialise the Google Auth provider.
 
         Args:
-            client_id: Client ID Google (optionnel, utilise GOOGLE_CLIENT_ID par défaut)
+            client_id:     Google OAuth Client ID     (defaults to GOOGLE_CLIENT_ID env var)
+            client_secret: Google OAuth Client Secret (defaults to GOOGLE_CLIENT_SECRET env var)
         """
-        self.client_id = client_id or GOOGLE_CLIENT_ID
+        self.client_id     = client_id     or GOOGLE_CLIENT_ID
+        self.client_secret = client_secret or GOOGLE_CLIENT_SECRET
 
         if not self.client_id:
-            print("⚠️  GOOGLE_CLIENT_ID non configuré. L'authentification Google sera désactivée.")
+            print("⚠️  GOOGLE_CLIENT_ID not configured. Google authentication will be disabled.")
 
     def verify_google_token(self, token: str) -> Optional[dict]:
         """
-        Vérifie un token Google et retourne les informations utilisateur.
+        Verify a Google ID token and return user information.
 
         Args:
-            token: Token ID Google
+            token: Google ID token (from the Sign-In button callback)
 
         Returns:
-            Dictionnaire avec les informations utilisateur ou None si invalide
+            Dict with user info, or None if the token is invalid.
         """
         if not self.client_id:
-            raise ValueError("Google Client ID non configuré")
+            raise ValueError("Google Client ID is not configured")
 
         try:
             # Vérifier le token (tolérance de 10s pour les décalages d'horloge)
@@ -60,18 +63,16 @@ class GoogleAuthProvider:
             }
 
         except ValueError as e:
-            # Token invalide
-            print(f"❌ Erreur de vérification du token Google: {e}")
+            print(f"❌ Google token verification failed: {e}")
             return None
         except Exception as e:
-            # Autre erreur
-            print(f"❌ Erreur lors de la vérification Google: {e}")
+            print(f"❌ Unexpected error during Google verification: {e}")
             return None
 
     def is_enabled(self) -> bool:
-        """Retourne True si l'authentification Google est configurée."""
+        """Returns True if Google authentication is configured (client ID set)."""
         return bool(self.client_id)
 
 
-# Instance globale
+# Global instance — reads GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET from environment
 google_auth_provider = GoogleAuthProvider()

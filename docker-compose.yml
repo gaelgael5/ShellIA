@@ -25,6 +25,15 @@ services:
       # ⚠️  Generate with: openssl rand -hex 32
       - SECRET_KEY=${SECRET_KEY:-}
 
+      # ── Google OAuth ─────────────────────────────────────
+      # Get your credentials at:
+      #   https://console.cloud.google.com → APIs & Services → Credentials
+      #   → Create credentials → OAuth 2.0 Client ID → Web application
+      # Authorized JavaScript origins : http://YOUR_IP:8000
+      # Authorized redirect URIs      : http://YOUR_IP:8000/auth/google/callback
+      - GOOGLE_CLIENT_ID=
+      - GOOGLE_CLIENT_SECRET=
+
     volumes:
       # User database (SQLite)
       - shellia_data:/app/data
